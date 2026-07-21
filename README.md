@@ -136,6 +136,17 @@ LoRA-style adapters, not full fine-tuning.
 Property regressors see only feature vectors, never images. That keeps them
 cheap to retrain, easy to inspect, and portable across imaging conditions.
 
+## Where this is going
+
+[docs/ROADMAP.md](docs/ROADMAP.md) records the longer arc: the original aim
+(topological features of pore and grain structure to predict fatigue, and
+eventually generative inverse design of microstructure for a target property),
+an honest account of the data constraints that order the work, and the
+near-term improvements worth pursuing (foundation-model features,
+self-supervised pretraining, assisted annotation, physics-informed and
+calibrated property models, and wiring in the persistent-homology featurizer
+that `topo.py` already implements).
+
 ## Hardness labels
 
 The UHCS sqlite contains no mechanical properties. `data/hardness_labels.csv`
