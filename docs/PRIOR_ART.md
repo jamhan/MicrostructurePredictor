@@ -115,6 +115,37 @@ predating the deep learning shift. Worth knowing for its bag-of-visual-words
 representations, which remain a useful interpretable baseline against CNN
 features when you need to explain a prediction to a metallurgist.
 
+## What scale these papers actually worked at
+
+Worth knowing before treating our 24-image benchmark as a handicap.
+
+| Work | Training images | Notes |
+|---|---|---|
+| Azimi 2018 | 11 | 21 total, 11 train / 10 test, 4 classes |
+| Stuckner 2022, downstream | 1 to 18 | EBC1 18, EBC3 15, Super1 10, EBC2/Super2/Super4 4, Super3 1 |
+| Stuckner 2022, pretraining | 100,000+ | MicroNet, 54 material classes |
+| DeCost 2019 (our benchmark) | 24 total | we train on 17, validate on 7 |
+
+The headline result in this literature came from eleven training images, and one
+of NASA's benchmarks trained on a single image. Segmentation data volume is not
+our problem, and it is not anyone's.
+
+Image count is the wrong unit, though. Azimi's micrographs averaged 7000x8000 px,
+which they cropped into 1000x1000 patches for 2831 training objects, then rotated
+each by 90, 180 and 270 degrees. Their 11 training images carry roughly 616
+megapixels against our 17 images at roughly 5.3, so they had on the order of 100
+times more pixel data from fewer files. One of their patches covers about three
+times the area of an entire UHCS micrograph. If we ever want more segmentation
+signal, the lever is more material area per image (magnification and field of
+view), not more images.
+
+Their ablation also ranks the levers, and it is lopsided: training from scratch
+gave 55.50%, fine-tuning from pretrained weights 87.98%, adding class balancing
+90.97%, adding augmentation 93.94%. Transfer learning was worth about ten times
+everything else combined. We already have transfer learning. We do not do class
+balancing, and our weakest class by a wide margin is the rare Widmanstätten one,
+which is exactly the case balancing addresses.
+
 ## What this list says about the gap
 
 Every paper above is about characterization: segmenting, classifying,
