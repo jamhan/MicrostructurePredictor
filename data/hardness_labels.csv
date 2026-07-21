@@ -1,0 +1,8 @@
+sample_label,hardness_hv,source_note
+AC1 800C 90M WQ,876,Hecht 2017 PhD thesis CMU (doi:10.1184/R1/6716156.v1) Table A.2: 66.3±0.2 HRC; HV interpolated from ASTM E140-07 Table 1
+AC1 900C 90M WQ,810,Hecht 2017 PhD thesis CMU (doi:10.1184/R1/6716156.v1) Table A.2: 64.3±0.2 HRC; HV interpolated from ASTM E140-07 Table 1
+AC1 970C 90M FC,410,Hecht 2017 PhD thesis CMU (doi:10.1184/R1/6716156.v1) Table A.1 furnace-cooled: 41.8±0.2 HRC; HV interpolated from ASTM E140-07 Table 1
+AC1 900C 90M Q,810,Hecht 2017 PhD thesis CMU (doi:10.1184/R1/6716156.v1) Table A.2: 64.3±0.2 HRC; HV interpolated from ASTM E140-07 Table 1; ASSUMED Q=WQ per thesis sec 5.3 (samples water quenched)
+AC1 970C 90M Q,611,Hecht 2017 PhD thesis CMU (doi:10.1184/R1/6716156.v1) Tables A.1/A.2 water-quenched: 55.9±0.6 HRC; HV interpolated from ASTM E140-07 Table 1; ASSUMED Q=WQ per thesis sec 5.3
+AC1 970C 90M AR,651,Hecht 2017 PhD thesis CMU (doi:10.1184/R1/6716156.v1) Table A.1 air-cooled: 57.9±0.2 HRC; HV interpolated from ASTM E140-07 Table 1; ASSUMED AR=air-cooled
+AC1 + vickers mark,436,Hecht 2017 PhD thesis CMU (doi:10.1184/R1/6716156.v1) Table A.1 as-cast: 44.2±0.6 HRC; HV interpolated from ASTM E140-07 Table 1; ASSUMED this sample is as-cast (no HT fields in sqlite)

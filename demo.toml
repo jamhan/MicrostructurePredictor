@@ -1,0 +1,4 @@
+epochs = 14
+batch_size = 4
+num_workers = 0
+val_frac = 0.2

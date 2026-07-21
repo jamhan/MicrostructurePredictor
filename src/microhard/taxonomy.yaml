@@ -1,0 +1,40 @@
+# Hierarchical materials taxonomy: family -> constituent -> morphology.
+# Node ids are path-style and derived from the keys: "ferrous/pearlite/lamellar".
+# Every label anywhere in the pipeline is one of these ids — never a bare string.
+#
+# Seeded with the ferrous/UHCS branch plus an aluminum family for the
+# second-adapter stub. Extend by adding keys; ids must stay stable once
+# checkpoints/heads reference them.
+
+ferrous:
+  name: Ferrous alloys
+  children:
+    matrix:
+      name: Ferritic matrix
+    pearlite:
+      name: Pearlite
+      children:
+        lamellar:
+          name: Lamellar pearlite
+    spheroidite:
+      name: Spheroidite
+      children:
+        particles:
+          name: Spheroidite carbide particles
+    network:
+      name: Proeutectoid cementite network
+    widmanstatten:
+      name: Widmanstatten cementite
+      children:
+        laths:
+          name: Widmanstatten laths
+    martensite:
+      name: Martensite
+
+aluminum:
+  name: Aluminum alloys
+  children:
+    matrix:
+      name: Aluminum matrix
+    precipitate:
+      name: Precipitates / second-phase particles
