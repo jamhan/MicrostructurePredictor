@@ -1,6 +1,7 @@
-# data (large downloads) — but keep the hand-transcribed hardness labels
+# data (large downloads) — but keep the hand-curated label tables
 data/*
 !data/hardness_labels.csv
+!data/property_lookup.csv
 
 checkpoints/
 .venv/

@@ -1,10 +1,26 @@
-# Hierarchical materials taxonomy: family -> constituent -> morphology.
-# Node ids are path-style and derived from the keys: "ferrous/pearlite/lamellar".
-# Every label anywhere in the pipeline is one of these ids — never a bare string.
+# Hierarchical materials taxonomy. Node ids are path-style and derived from the
+# keys: "ferrous/pearlite/lamellar". Every label anywhere in the pipeline is one
+# of these ids — never a bare string.
 #
+# Three axes live here, one tree per root. A root picks its axis with "axis:";
+# roots that say nothing are on the default "microconstituent" axis, so the
+# ferrous and aluminum trees below read exactly as they always did.
+#
+#   microconstituent  what is in the image (family / constituent / morphology)
+#   alloy_grade       what the material is        -> rooted at "grade"
+#   condition         how it was processed        -> rooted at "condition"
+#
+# The last two are the join key for distant supervision: bulk property values
+# are looked up per (alloy_grade, condition) pair in data/property_lookup.csv.
+# Adding a node here is vocabulary only. It asserts nothing about properties
+# until a cited row for it appears in that table. See docs/DATASET_PLAN.md.
+#
+# Extend by adding keys; ids must stay stable once checkpoints, heads, or
+# lookup rows reference them.
+
+# --- microconstituent axis -------------------------------------------------
 # Seeded with the ferrous/UHCS branch plus an aluminum family for the
-# second-adapter stub. Extend by adding keys; ids must stay stable once
-# checkpoints/heads reference them.
+# second-adapter stub.
 
 ferrous:
   name: Ferrous alloys
@@ -38,3 +54,88 @@ aluminum:
       name: Aluminum matrix
     precipitate:
       name: Precipitates / second-phase particles
+
+# --- alloy_grade axis ------------------------------------------------------
+# Ids are grade/<family>/<grade>. Two kinds of node live here: standard
+# designations (AISI/AA numbers), which is what published property tables are
+# keyed on, and coarse classes for sources that only report one ("medium
+# carbon steel"). The UHCSDB castings get their own ids because the dataset
+# identifies samples by casting, not by a standard grade.
+
+grade:
+  name: Alloy grades
+  axis: alloy_grade
+  children:
+    ferrous:
+      name: Ferrous grades
+      children:
+        uhcs_ac:
+          name: UHCSDB casting AC
+        uhcs_ac1:
+          name: UHCSDB casting AC1
+        low_carbon:
+          name: Low-carbon steel, grade unspecified
+        medium_carbon:
+          name: Medium-carbon steel, grade unspecified
+        high_carbon:
+          name: High-carbon steel, grade unspecified
+        ultrahigh_carbon:
+          name: Ultrahigh-carbon steel, grade unspecified
+        aisi_1018:
+          name: AISI 1018
+        aisi_1045:
+          name: AISI 1045
+        aisi_1080:
+          name: AISI 1080
+        aisi_4140:
+          name: AISI 4140
+    aluminum:
+      name: Aluminum grades
+      children:
+        aa_6061:
+          name: AA 6061
+        aa_7075:
+          name: AA 7075
+
+# --- condition axis --------------------------------------------------------
+# One node per physical processing route, not per phrase used to describe one.
+# Normalizing is austenitizing plus a still-air cool, so it is
+# condition/austenitize/air_cool and "normalized" is an alias for it in
+# normalize.py rather than a second node. The axis allows a fourth level for
+# the case where a route has to be split by hold temperature or time because
+# the property genuinely differs across it.
+
+condition:
+  name: Processing conditions
+  axis: condition
+  children:
+    as_cast:
+      name: As-cast
+    hot_rolled:
+      name: Hot rolled
+    cold_drawn:
+      name: Cold drawn
+    anneal:
+      name: Annealed
+      children:
+        full:
+          name: Full anneal
+        spheroidize:
+          name: Spheroidize anneal
+        subcritical:
+          name: Subcritical (process) anneal
+    austenitize:
+      name: Austenitized, then cooled
+      children:
+        water_quench:
+          name: Water quenched
+        oil_quench:
+          name: Oil quenched
+        air_cool:
+          name: Air cooled (normalized)
+        furnace_cool:
+          name: Furnace cooled
+        unspecified_quench:
+          name: Quenched, medium not recorded
+    quench_temper:
+      name: Quenched and tempered

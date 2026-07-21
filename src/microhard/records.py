@@ -19,6 +19,15 @@ from torch.utils.data import Dataset
 
 SPLITS = ("train", "val", "test")
 
+# Where a property value came from. MEASURED means someone put an indenter in
+# this physical sample; DISTANT means the value was looked up for the record's
+# (alloy_grade, condition) pair and is therefore a weak label shared with every
+# other record of that pair. Anything that reports or evaluates a property has
+# to be able to tell the two apart.
+MEASURED = "measured"
+DISTANT = "distant"
+PROPERTY_SOURCES = (MEASURED, DISTANT)
+
 
 @dataclass(frozen=True)
 class CanonicalRecord:
@@ -32,7 +41,15 @@ class CanonicalRecord:
       taxonomy_labels  taxonomy node ids describing the image
       mask_path        pixel-level label mask, if this record is in a benchmark
       mask_class_nodes taxonomy node id for each integer mask class (index = class)
-      properties       measured sample properties, e.g. {"hardness_hv": 310.0}
+      properties       sample properties, e.g. {"hardness_hv": 310.0}
+      property_sources per property name, MEASURED or DISTANT
+      alloy_grade      node id on the alloy_grade axis, e.g. "grade/ferrous/aisi_1045"
+      condition        node id on the condition axis, e.g. "condition/austenitize/water_quench"
+
+    ``alloy_grade`` and ``condition`` together are the distant-supervision
+    join key (docs/DATASET_PLAN.md). Either may be None when the source
+    metadata does not say, and a record missing either one is simply never
+    joined; guessing a key is worse than having none.
     """
 
     record_id: str
@@ -44,6 +61,16 @@ class CanonicalRecord:
     mask_path: Path | None = None
     mask_class_nodes: tuple[str, ...] | None = None
     properties: dict[str, float] = field(default_factory=dict)
+    property_sources: dict[str, str] = field(default_factory=dict)
+    alloy_grade: str | None = None
+    condition: str | None = None
+
+    @property
+    def join_key(self) -> tuple[str, str] | None:
+        """The (alloy_grade, condition) pair, or None if either is missing."""
+        if self.alloy_grade is None or self.condition is None:
+            return None
+        return (self.alloy_grade, self.condition)
 
     def __post_init__(self) -> None:
         if not self.group_id:

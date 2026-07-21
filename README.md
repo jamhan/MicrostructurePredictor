@@ -114,11 +114,14 @@ it live use `uv run --with jupyter jupyter lab`.
 
 ## Design notes
 
-Every label in the system is a node id from `src/microhard/taxonomy.yaml`
-(family / constituent / morphology, e.g. `ferrous/pearlite/lamellar`). Datasets
-enter through adapters that emit canonical records against that vocabulary, so
-adding a material means writing one adapter and possibly extending the
-taxonomy, not touching task code.
+Every label in the system is a node id from `src/microhard/taxonomy.yaml`.
+The file holds three axes: what is in the image (family / constituent /
+morphology, e.g. `ferrous/pearlite/lamellar`), what the material is
+(`grade/ferrous/aisi_1045`), and how it was processed
+(`condition/austenitize/water_quench`). Datasets enter through adapters that
+emit canonical records against that vocabulary, so adding a material means
+writing one adapter and possibly extending the taxonomy, not touching task
+code.
 
 Train/validation/test splits are grouped by physical sample. Micrographs of the
 same sample are near-duplicates, and splitting them naively would inflate every
@@ -158,6 +161,15 @@ with its uncertainty, and any assumption made in matching thesis conditions to
 UHCSDB sample labels. Rows marked ASSUMED await verification. The thesis has no
 hardness data for the other hold times, so growing past n=7 requires another
 source or new measurements.
+
+[docs/DATASET_PLAN.md](docs/DATASET_PLAN.md) is the plan for growing them by
+distant supervision: attaching published hardness values to micrographs by
+joining on (alloy grade, processing condition). It covers the join key, the
+`data/property_lookup.csv` schema and the citation protocol for filling it, the
+held-out-condition benchmark that tests whether a model learned physics or just
+grade recognition, and why the same technique must not be used for
+defect-controlled properties like fatigue. The table ships empty; no property
+value in this repo is uncited.
 
 ## Data and citations
 

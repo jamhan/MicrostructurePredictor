@@ -56,13 +56,17 @@ def download(config: Optional[Path] = _CONFIG_OPTION) -> None:
 
 @app.command()
 def taxonomy(config: Optional[Path] = _CONFIG_OPTION) -> None:
-    """Print the taxonomy tree (families, constituents, morphologies)."""
-    from .taxonomy import Taxonomy
+    """Print the taxonomy tree, one section per axis."""
+    from .taxonomy import AXIS_MAX_LEVEL, Taxonomy
 
     tax = Taxonomy.load(_cfg(config).taxonomy_path)
-    for node_id in tax.ids():
-        node = tax.node(node_id)
-        typer.echo(f"{'  ' * (node.level - 1)}{node.id}  ({node.name})")
+    for axis in sorted(AXIS_MAX_LEVEL):
+        nodes = tax.in_axis(axis)
+        if not nodes:
+            continue
+        typer.echo(f"\n[{axis}]")
+        for node in nodes:
+            typer.echo(f"{'  ' * (node.level - 1)}{node.id}  ({node.name})")
 
 
 @app.command("train-router")

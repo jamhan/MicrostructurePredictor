@@ -86,6 +86,11 @@ class Config:
         return self.data_dir / "hardness_labels.csv"
 
     @property
+    def property_lookup_csv(self) -> Path:
+        """Distant-supervision table, keyed by (alloy_grade, condition)."""
+        return self.data_dir / "property_lookup.csv"
+
+    @property
     def features_csv(self) -> Path:
         return self.data_dir / "features.csv"
 

@@ -6,8 +6,8 @@ from abc import ABC, abstractmethod
 from typing import ClassVar
 
 from ..config import Config
-from ..records import CanonicalRecord
-from ..taxonomy import Taxonomy
+from ..records import PROPERTY_SOURCES, CanonicalRecord
+from ..taxonomy import CONDITION_AXIS, GRADE_AXIS, MICROCONSTITUENT_AXIS, Taxonomy
 
 
 class BaseAdapter(ABC):
@@ -33,11 +33,36 @@ class BaseAdapter(ABC):
         on disk yet; consumers filter on existence where it matters)."""
 
     def validated_records(self) -> list[CanonicalRecord]:
-        """records() with every taxonomy reference checked against the registry."""
+        """records() with every taxonomy reference checked against the registry.
+
+        Each reference is checked against its own axis, so a grade id used as
+        a constituent label (or the reverse) fails here rather than producing
+        a join key nothing matches.
+        """
         out = self.records()
         for record in out:
             if record.taxonomy_labels:
-                self.taxonomy.require(record.taxonomy_labels)
+                self.taxonomy.require(record.taxonomy_labels, axis=MICROCONSTITUENT_AXIS)
             if record.mask_class_nodes:
-                self.taxonomy.require(record.mask_class_nodes)
+                self.taxonomy.require(record.mask_class_nodes, axis=MICROCONSTITUENT_AXIS)
+            if record.alloy_grade:
+                self.taxonomy.require([record.alloy_grade], axis=GRADE_AXIS)
+            if record.condition:
+                self.taxonomy.require([record.condition], axis=CONDITION_AXIS)
+            self._check_property_sources(record)
         return out
+
+    @staticmethod
+    def _check_property_sources(record: CanonicalRecord) -> None:
+        orphans = sorted(set(record.property_sources) - set(record.properties))
+        if orphans:
+            raise ValueError(
+                f"{record.record_id}: property_sources names {orphans}, which are "
+                "not in properties"
+            )
+        unknown = sorted(set(record.property_sources.values()) - set(PROPERTY_SOURCES))
+        if unknown:
+            raise ValueError(
+                f"{record.record_id}: property source {unknown} not in "
+                f"{list(PROPERTY_SOURCES)}"
+            )

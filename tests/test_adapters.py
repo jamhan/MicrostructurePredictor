@@ -1,8 +1,12 @@
+import sqlite3
+from dataclasses import replace
+
 import pytest
 
 from microhard.adapters import available_adapters, enabled_adapters, get_adapter
 from microhard.adapters.uhcs import SEG_CLASS_NODES, UHCSAdapter, load_hardness_labels
-from microhard.taxonomy import Taxonomy
+from microhard.records import MEASURED
+from microhard.taxonomy import Taxonomy, UnknownNodeError
 from tests.conftest import MICROGRAPHS_PER_SAMPLE, N_SAMPLES
 
 
@@ -57,6 +61,37 @@ def test_uhcs_attaches_hardness_properties(synthetic_db, taxonomy) -> None:
     assert all(r.properties == {"hardness_hv": 310.0} for r in s1)
     s2 = [r for r in records if r.group_id == "uhcs-sample-2"]
     assert all(r.properties == {} for r in s2)  # non-numeric row dropped
+
+
+def test_uhcs_emits_a_join_key(synthetic_db, taxonomy) -> None:
+    """Sample label + cool_method become (alloy_grade, condition) node ids."""
+    con = sqlite3.connect(synthetic_db.sqlite_path)
+    con.execute("UPDATE sample SET label = 'AC1 970C 90M WQ', cool_method = 'WQ' WHERE sample_id = 1")
+    con.execute("UPDATE sample SET label = 'ET Gyro', cool_method = NULL WHERE sample_id = 2")
+    con.commit()
+    con.close()
+
+    records = UHCSAdapter(synthetic_db, taxonomy).validated_records()
+    s1 = next(r for r in records if r.group_id == "uhcs-sample-1")
+    assert s1.join_key == ("grade/ferrous/uhcs_ac1", "condition/austenitize/water_quench")
+
+    s2 = next(r for r in records if r.group_id == "uhcs-sample-2")
+    assert s2.join_key is None  # unrecognised metadata joins to nothing
+
+
+def test_uhcs_tags_measured_hardness(synthetic_db, taxonomy) -> None:
+    synthetic_db.hardness_csv.write_text("sample_label,hardness_hv,source_note\nS1,310,Hecht2017\n")
+    records = UHCSAdapter(synthetic_db, taxonomy).validated_records()
+    s1 = next(r for r in records if r.group_id == "uhcs-sample-1")
+    assert s1.property_sources == {"hardness_hv": MEASURED}
+
+
+def test_validated_records_rejects_a_grade_used_as_a_label(synthetic_db, taxonomy) -> None:
+    adapter = UHCSAdapter(synthetic_db, taxonomy)
+    bad = [replace(adapter.records()[0], taxonomy_labels=("grade/ferrous/uhcs_ac1",))]
+    adapter.records = lambda: bad  # type: ignore[method-assign]
+    with pytest.raises(UnknownNodeError, match="expected 'microconstituent'"):
+        adapter.validated_records()
 
 
 def test_hardness_bad_header_rejected(synthetic_db) -> None:

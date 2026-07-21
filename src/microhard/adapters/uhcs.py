@@ -14,7 +14,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from ..records import CanonicalRecord
+from ..normalize import normalize_join_key
+from ..records import MEASURED, CanonicalRecord
 from . import register_adapter
 from .base import BaseAdapter
 
@@ -116,9 +117,11 @@ class UHCSAdapter(BaseAdapter):
             scale = self._scale(row)
             labels = PRIMARY_TO_NODES.get(row.get("primary_microconstituent"))
             sample_label = row.get("sample_label")
-            properties = {}
+            properties, property_sources = {}, {}
             if pd.notna(sample_label) and sample_label in hv_by_sample:
                 properties["hardness_hv"] = float(hv_by_sample[sample_label])
+                property_sources["hardness_hv"] = MEASURED
+            grade, condition = self._join_key(row)
             mask_path = masks.get(image_path.stem)
             out.append(
                 CanonicalRecord(
@@ -135,9 +138,29 @@ class UHCSAdapter(BaseAdapter):
                     mask_path=mask_path,
                     mask_class_nodes=SEG_CLASS_NODES if mask_path is not None else None,
                     properties=properties,
+                    property_sources=property_sources,
+                    alloy_grade=grade,
+                    condition=condition,
                 )
             )
         return out
+
+    @staticmethod
+    def _join_key(row: pd.Series) -> tuple[str | None, str | None]:
+        """(alloy_grade, condition) node ids from the sample metadata.
+
+        The grade comes from the casting prefix of the sample label ("AC1 970C
+        90M WQ"), the condition from the ``cool_method`` code, falling back to
+        the label when that column is empty. Codes the alias table does not
+        recognise (``WC``, ``650-1H``) yield None, which keeps those samples
+        out of the join instead of guessing a route for them.
+        """
+        label = row.get("sample_label")
+        cool = row.get("cool_method")
+        return normalize_join_key(
+            str(label) if pd.notna(label) else None,
+            str(cool) if pd.notna(cool) else None,
+        )
 
     @staticmethod
     def _scale(row: pd.Series) -> float | None:
