@@ -227,6 +227,10 @@ micrographs come out with a complete key. The 11 samples that do not are the
 unlabelled odds and ends ("ET Gyro", "Midrex DRI") and the multi-step
 treatments the condition vocabulary does not yet cover.
 
+That is only coarse normalization coverage. The Phase 1 audit in
+`docs/UHCS_JOIN_KEY_AUDIT.md` checks temperature, hold time, multi-step labels,
+and unlinked images before treating any of those records as property-joinable.
+
 ## The held-out-condition split
 
 Design, not yet implemented.
