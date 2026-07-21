@@ -17,8 +17,8 @@ class PropertyHead(ABC):
     """One regressor for one (scope, property) pair.
 
     ``scope`` is a taxonomy family id, optionally refined by an adapter name
-    ("ferrous" or "ferrous/uhcs"). Heads consume FeatureVector only — the
-    contract that keeps property models material-agnostic and image-free.
+    ("ferrous" or "ferrous/uhcs"). Heads consume FeatureVector instances and
+    nothing else; in particular they never see images.
     """
 
     scope: ClassVar[str]

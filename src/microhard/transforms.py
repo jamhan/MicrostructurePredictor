@@ -1,7 +1,7 @@
 """Shared albumentations pipelines.
 
-Everything pads and crops — never resizes — so the physical scale (µm/px)
-encoded in the micrographs is preserved.
+Everything pads and crops rather than resizing, which preserves the
+micron-per-pixel scale of the micrographs.
 """
 
 from __future__ import annotations

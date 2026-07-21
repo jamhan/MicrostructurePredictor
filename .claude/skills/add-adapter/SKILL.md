@@ -6,45 +6,38 @@ description: Add a new dataset adapter (new material family or micrograph datase
 # Add a dataset adapter
 
 Adapters translate one dataset's native layout into `CanonicalRecord`s
-(src/microhard/records.py). Everything downstream — router, segmenter,
-features, property heads — consumes only canonical records, so a new dataset
-never touches task code.
+(src/microhard/records.py). Task code only ever sees canonical records, so a
+new dataset should not require touching the router, segmenter, or heads.
 
-## Steps
+Steps:
 
-1. **Taxonomy first.** If the dataset introduces a new family or constituents,
-   extend `src/microhard/taxonomy.yaml` (see the `edit-taxonomy` skill).
-   Every label an adapter emits must be a registered taxonomy node id.
+1. If the dataset introduces a new family or constituents, extend
+   `src/microhard/taxonomy.yaml` first (see the edit-taxonomy skill). Every
+   label an adapter emits must be a registered taxonomy node id.
 
-2. **Pick a base.**
-   - Simple folder of images + CSV labels → subclass `ImageFolderAdapter`
-     (src/microhard/adapters/folder.py); set `name`, `family`, optionally
-     `modality`; drop `labels.csv` (columns: `path, taxonomy_labels[,
-     group_id, scale_um_per_px]`, multiple node ids joined with `|`) under
-     `data/<name>/`. See `MicroNetAlAdapter` — often zero new logic needed.
-   - Anything richer (databases, masks, properties) → subclass `BaseAdapter`
-     in a new `src/microhard/adapters/<name>.py`. `UHCSAdapter`
-     (adapters/uhcs.py) is the reference implementation: scale computation,
-     label mapping, mask attachment, property join.
+2. Pick a base class. For a folder of images plus a CSV of labels, subclass
+   `ImageFolderAdapter` (adapters/folder.py): set `name`, `family`, optionally
+   `modality`, and put `labels.csv` (columns `path, taxonomy_labels[,
+   group_id, scale_um_per_px]`, multiple node ids joined with `|`) under
+   `data/<name>/`. `MicroNetAlAdapter` shows this needing no new logic. For
+   anything richer (databases, masks, properties), subclass `BaseAdapter` in a
+   new `adapters/<name>.py`; `UHCSAdapter` (adapters/uhcs.py) is the reference
+   for scale computation, label mapping, mask attachment, and property joins.
 
-3. **Decorate with `@register_adapter`** and import the module at the bottom
-   of `src/microhard/adapters/__init__.py` so registration runs on import.
+3. Decorate the class with `@register_adapter` and import the module at the
+   bottom of `adapters/__init__.py` so registration runs on package import.
 
-4. **Record contract checklist**
-   - `record_id` unique, prefixed with the adapter name.
-   - `group_id` = the physical sample (this is the anti-leakage split unit) —
-     records of one sample must share it.
-   - `scale_um_per_px` computed whenever derivable; `None` only when the
-     source truly lacks it.
-   - `taxonomy_labels` / `mask_class_nodes`: taxonomy node ids only, never
-     bare strings. `validated_records()` enforces this — use it in tests.
-   - `properties`: measured sample-level values, e.g. `{"hardness_hv": 310.0}`.
+4. Record fields to get right: `record_id` unique and prefixed with the
+   adapter name; `group_id` set to the physical sample, since it is the split
+   unit that prevents leakage; `scale_um_per_px` computed whenever the source
+   provides it; `taxonomy_labels` and `mask_class_nodes` as node ids
+   (`validated_records()` checks them, use it in tests); `properties` as
+   measured sample values like `{"hardness_hv": 310.0}`.
 
-5. **Tests** (tests/test_adapters.py): add a synthetic fixture in
-   tests/conftest.py (tiny generated files, never real downloads) and assert:
-   record count, scale, group_id prefix, label mapping, `validated_records()`
-   passes. Mirror `test_folder_stub_records`.
+5. Add a synthetic fixture in tests/conftest.py (small generated files, no
+   real downloads) and tests in tests/test_adapters.py covering record count,
+   scale, group_id prefix, and label mapping. `test_folder_stub_records` is a
+   template.
 
-6. **Enable it**: add the adapter name to `Config.adapters` (or an `adapters =
-   [...]` line in a run TOML). Run `uv run pytest` — the router picks up new
-   families automatically on the next `train-router`.
+6. Enable the adapter in `Config.adapters` or a run TOML, and run
+   `uv run pytest`. The router picks up new families on its next training run.

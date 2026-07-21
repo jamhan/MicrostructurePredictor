@@ -18,8 +18,8 @@ if TYPE_CHECKING:
     import torch
 
 # NASA MicroNet resnet50 encoder (github.com/nasa/pretrained-microscopy-models,
-# mirrored at huggingface.co/jstuckner). Loading falls back to ImageNet weights
-# if this URL is unreachable, so the pipeline never blocks on it.
+# mirrored at huggingface.co/jstuckner). If the URL is unreachable, loading
+# falls back to the ImageNet weights.
 DEFAULT_MICRONET_URL = (
     "https://nasa-public-data.s3.amazonaws.com/microscopy_segmentation_models/"
     "resnet50_pretrained_microscopynet_v1.1.pth.tar"
@@ -91,7 +91,7 @@ class Config:
 
     @property
     def backbone_checkpoint(self) -> Path:
-        """The frozen shared backbone, materialized once for all heads."""
+        """The frozen shared backbone, written once and reused by all heads."""
         return self.checkpoint_dir / "backbone.pt"
 
     @property

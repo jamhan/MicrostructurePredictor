@@ -1,152 +1,174 @@
 # microhard
 
-Predict material properties from SEM micrographs — multi-material by design,
-seeded with the UHCS (ultrahigh carbon steel) dataset:
+Predicts material properties from SEM micrographs. Proof of concept, currently
+trained on the UHCS dataset: 961 micrographs of a 2C-4Cr ultrahigh carbon steel
+under systematically varied heat treatments (DeCost, Francis & Holm 2017).
 
-1. **Route** — a family-level classifier (taxonomy level 1) with conformal
-   abstention decides steel vs. other, or answers "unknown family".
-2. **Segment/classify microconstituents** — U-Net decoder + linear classifier
-   heads over one frozen shared backbone (MicroNet/ImageNet resnet50).
-   All labels are taxonomy node ids, never bare strings.
-3. **Regress properties** — a named, material-agnostic `FeatureVector`
-   (constituent fractions + morphology stats keyed by taxonomy id) feeds
-   registered property heads (hardness first: LOO CV, gradient boosting +
-   linear baseline). Missing head or unknown family → explicit abstention.
-
-MVP scaffold: working end-to-end beats sophisticated. Runs on a single
-consumer GPU, Apple Silicon (MPS), or CPU.
-
-## Architecture
+The pipeline runs in three stages. A router assigns an incoming image to a
+material family, and answers "unknown" when it isn't sure. A U-Net segments the
+image into microconstituents; for the steel branch these are ferritic matrix,
+proeutectoid cementite network, spheroidite, and Widmanstätten cementite. The
+segmentation is then reduced to a feature vector of area fractions and
+morphology statistics, and small regression models map those features to
+properties, starting with Vickers hardness. Any stage that lacks a trained
+model or calibration data reports why and produces nothing, so a prediction is
+never silently made up.
 
 ```
-                       taxonomy.yaml (family -> constituent -> morphology)
-                                        |
- datasets --> adapters/ ----------------+----------------------------------
-   UHCS sqlite+images   UHCSAdapter     |    every label = taxonomy node id
-   MicroNet-Al (stub)   MicroNetAlAdapter
-        |                               |
-        v  CanonicalRecord (image, scale_um_per_px, modality,
-        |                   group_id, labels?, mask?, properties?)
-        |
-        |          +------ frozen shared backbone (backbone.pt) ------+
-        v          |               |                  |               |
-   split BY GROUP  |  router.py    |  classify.py     |  segment.py   |
-   (never leak a   |  family head  |  constituent     |  U-Net        |
-   sample across   |  + conformal  |  head            |  decoder head |
-   splits)         |  abstention   |                  |               |
-                   +---------------+------------------+---------------+
-                        |                                  |
-                        v                                  v
-                "unknown family"                 features.py: FeatureVector
-                 -> abstain                      frac:ferrous/network, ...
-                                                 mean per group (sample)
-                                                     |
-                                                     v
-                                      heads/ registry: (scope, property)
-                                      register("ferrous/uhcs",
-                                                "hardness_hv", HardnessHead)
-                                                     |
-                                                     v
-              microhard predict <image>
-              -> family (or abstain) -> fractions -> HV estimate (or abstain)
+ download.sh                          hardness_labels.csv (from Hecht thesis)
+     |                                        |
+     v                                        v
+ UHCSDB sqlite + micrographs         (sample_label, hardness_hv)
+     |                                        |
+     |  adapters/: canonical records          |
+     v                                        |
+        one frozen resnet50 backbone          |
+        (checkpoints/backbone.pt)             |
+     |          |               |             |
+     v          v               v             |
+ router.py   classify.py    segment.py        |
+ family +    constituent    U-Net decoder     |
+ abstention  classifier     head              |
+     |                          |             |
+     v                          v             v
+ "unknown" -> stop      features.py      heads/: property
+                        area fractions,  regressors keyed by
+                        morphology       (family, property)
+                            |                 |
+                            +--------+--------+
+                                     v
+                microhard predict <image>
+                family -> fractions -> property estimate
 ```
 
-Design rules enforced by tests:
+## Results so far
 
-- **No full-backbone fine-tuning.** One encoder is materialized once to
-  `checkpoints/backbone.pt`; router/classifier/segmenter train heads only.
-  (If head-only underperforms, add LoRA/adapters — not full fine-tuning.)
-- **Splits by group.** `group_id` = physical sample; micrographs of one
-  sample never straddle train/val/test.
-- **Pad, never resize** — preserves the physical µm/px scale.
-- **Heads consume FeatureVector only** — never raw images.
-- **Abstain, don't fabricate**: unknown family, family without a segmenter,
-  or property without a calibrated head all return recorded abstentions.
+These are feasibility numbers on small data, not benchmarks.
+
+Segmentation: mean IoU 0.495 on validation samples, training only the U-Net
+decoder (9M parameters) over a frozen MicroNet encoder, on the 24 pixel-labeled
+images of the DeCost benchmark. Full fine-tuning in the original paper reaches
+roughly 0.7+, so head-only training leaves accuracy on the table in exchange
+for a shared backbone.
+
+Hardness: leave-one-sample-out MAE of about 123 HV across 7 labeled samples
+spanning 410 to 876 HV (gradient boosting; a linear baseline diverges at this
+sample size). The error has a physical explanation: hardness in this steel is
+controlled by the matrix state (martensite vs. pearlite vs. bainite, set by
+cooling rate), and the four-class segmentation lumps all of those into one
+"matrix" class. Two treatments with 200 HV between them can look identical to
+the segmenter. The likely fix is feeding the image-level constituent classifier
+(which does distinguish martensite) into the feature vector.
 
 ## Setup
 
-Python is pinned to 3.12 (`.python-version`) for full wheel availability
-across the torch/opencv stack; `uv` fetches it automatically.
+Python is pinned to 3.12 (`.python-version`) for wheel availability across the
+torch stack; `uv` fetches it automatically.
 
 ```bash
-uv sync                 # core deps (torch, smp, albumentations, ...)
-uv sync --extra topo    # + optional persistent-homology features (Cubical Ripser)
-bash download.sh        # fetch UHCS data (or prints manual URLs)
+uv sync                 # core dependencies
+uv sync --extra topo    # optional persistent-homology features (Cubical Ripser)
+bash download.sh        # fetch the UHCS data
 uv run microhard download   # verify what's on disk
 ```
 
-## Usage
+The canonical NIST host for the UHCS data has been down since at least July
+2026. `download.sh` tries it first, then falls back to
+`scripts/fetch_uhcs_mirror.py`, which pulls the metadata and micrographs from
+the Materials Data Facility mirror and the segmentation labels from DeCost's
+uhcs-segment repository, and applies the standard preprocessing (label files
+renamed to sqlite keys, the 38 px instrument banner cropped from images and
+masks, int64 label TIFFs converted to uint8 PNGs). Pass `--all` to fetch all
+961 micrographs instead of the demo subset.
 
-An executed walkthrough of how the network works — frozen MicroNet encoder,
-feature pyramid, U-Net decoder head, live training loop on MPS — is in
-[notebooks/how_the_net_works.ipynb](notebooks/how_the_net_works.ipynb)
-(re-run with `uv run --with jupyter jupyter lab`).
+## Usage
 
 ```bash
 uv run microhard taxonomy           # print the label tree
-uv run microhard train-seg          # U-Net decoder on 11256/964 masks
+uv run microhard train-seg          # U-Net decoder on the benchmark masks
 uv run microhard train-clf          # constituent classifier head
 uv run microhard train-router       # family router + conformal calibration
-uv run microhard extract-features   # segment all micrographs -> data/features.csv
-uv run microhard fit-hardness       # LOO CV; skips cleanly with no labels
-uv run microhard predict path/to/image.tif            # routed
-uv run microhard predict path/to/image.tif --family ferrous   # router bypass
+uv run microhard extract-features   # segment everything -> data/features.csv
+uv run microhard fit-hardness       # leave-one-out CV over labeled samples
+uv run microhard predict path/to/image.tif
+uv run microhard predict path/to/image.tif --family ferrous   # skip the router
 ```
 
-Configuration is one dataclass ([src/microhard/config.py](src/microhard/config.py))
-with TOML overrides:
+Configuration is a single dataclass (`src/microhard/config.py`) with TOML
+overrides:
 
 ```toml
 # myrun.toml
-adapters = ["uhcs", "micronet_al"]  # enabled dataset adapters
+adapters = ["uhcs", "micronet_al"]
 encoder_weights = "imagenet"        # micronet | imagenet | none
 batch_size = 4
 device = "cpu"                      # auto | cpu | cuda | mps
-router_alpha = 0.1                  # lower = router abstains more often
+router_alpha = 0.1
 ```
 
-```bash
-uv run microhard train-router -c myrun.toml
-```
+There is a worked walkthrough of the network itself, from raw pixels to the
+hardness fit, in
+[notebooks/how_the_net_works.ipynb](notebooks/how_the_net_works.ipynb). It is
+committed with outputs, so it reads on GitHub without running anything; to run
+it live use `uv run --with jupyter jupyter lab`.
 
-## Extending (repo skills)
+## Design notes
 
-Claude Code skills in `.claude/skills/` walk through the four growth paths:
+Every label in the system is a node id from `src/microhard/taxonomy.yaml`
+(family / constituent / morphology, e.g. `ferrous/pearlite/lamellar`). Datasets
+enter through adapters that emit canonical records against that vocabulary, so
+adding a material means writing one adapter and possibly extending the
+taxonomy, not touching task code.
 
-- **add-adapter** — integrate a new dataset/material family via
-  `BaseAdapter`/`ImageFolderAdapter` (the `micronet_al` aluminum stub is the
-  template; point it at a real MicroNet/EM3M subset).
-- **add-property-head** — register a new `(scope, property)` regressor.
-- **edit-taxonomy** — grow `taxonomy.yaml` without orphaning checkpoints.
-- **transcribe-hardness** — add HV rows from the Hecht papers and recalibrate.
+Train/validation/test splits are grouped by physical sample. Micrographs of the
+same sample are near-duplicates, and splitting them naively would inflate every
+validation number in the project.
+
+Images are padded rather than resized. The micron-per-pixel scale is physical
+information, and resizing would corrupt it.
+
+The resnet50 encoder is built once, written to `checkpoints/backbone.pt`, and
+reused frozen by every task head. This keeps the heads mutually consistent and
+means a failed weight download can never silently change the features under a
+trained head. If head-only training proves limiting, the intended next step is
+LoRA-style adapters, not full fine-tuning.
+
+Property regressors see only feature vectors, never images. That keeps them
+cheap to retrain, easy to inspect, and portable across imaging conditions.
 
 ## Hardness labels
 
-The UHCS sqlite has **no hardness columns**. `data/hardness_labels.csv`
-(columns: `sample_label, hardness_hv, source_note`) starts empty; transcribe
-HV values from the Hecht papers by hand. Every stage degrades gracefully
-("insufficient calibration data") while the file is empty. `sample_label`
-must match the `label` column of the sqlite `sample` table.
+The UHCS sqlite contains no mechanical properties. `data/hardness_labels.csv`
+holds values transcribed from Appendix Tables A.1 and A.2 of Matthew Hecht's
+PhD thesis (CMU, doi:10.1184/R1/6716156.v1), which report Rockwell C for the
+90-minute heat treatments; HV values are interpolated from ASTM E140-07
+Table 1. Each row's `source_note` records the table, the original HRC value
+with its uncertainty, and any assumption made in matching thesis conditions to
+UHCSDB sample labels. Rows marked ASSUMED await verification. The thesis has no
+hardness data for the other hold times, so growing past n=7 requires another
+source or new measurements.
 
-## Data, licenses, citations
+## Data and citations
 
-- **UHCSDB — Ultrahigh Carbon Steel micrographs** (961 SEM images + sqlite
-  metadata): <https://hdl.handle.net/11256/940>, distributed by NIST under a
-  Creative Commons license (see the handle page). Micrographs collected by
-  Matt Hecht (CMU); see the Hecht et al. papers on UHCS spheroidite
-  coarsening for provenance and hardness measurements.
-- **UHCS segmentation benchmark** (pixel-level microconstituent masks):
-  <https://hdl.handle.net/11256/964>.
-- Cite:
-  - DeCost, Francis, Holm, "UHCSDB: UltraHigh Carbon Steel Micrograph
-    DataBase," *Integrating Materials and Manufacturing Innovation* 6 (2017).
-  - DeCost, Lei, Francis, Holm, "High throughput quantitative metallography
-    for complex microstructures using deep learning: a case study in
-    ultrahigh carbon steel," *Microscopy and Microanalysis* / IMMI (2019).
-  - Stuckner, Harder, Smith, "Microstructure segmentation with deep learning
-    encoders pre-trained on a large microscopy dataset," *npj Computational
-    Materials* 8, 200 (2022) — MicroNet pretrained encoders,
-    <https://github.com/nasa/pretrained-microscopy-models>.
+UHCS micrographs and metadata: <https://hdl.handle.net/11256/940>, distributed
+by NIST under a Creative Commons license. Segmentation benchmark:
+<https://hdl.handle.net/11256/964>. Micrographs collected by Matthew Hecht
+(CMU).
+
+If you use this data, cite:
+
+- DeCost, Francis, Holm, "UHCSDB: UltraHigh Carbon Steel Micrograph DataBase,"
+  *Integrating Materials and Manufacturing Innovation* 6 (2017).
+- DeCost, Lei, Francis, Holm, "High throughput quantitative metallography for
+  complex microstructures using deep learning," *Microscopy and Microanalysis*
+  25 (2019).
+- Stuckner, Harder, Smith, "Microstructure segmentation with deep learning
+  encoders pre-trained on a large microscopy dataset," *npj Computational
+  Materials* 8, 200 (2022). MicroNet weights:
+  <https://github.com/nasa/pretrained-microscopy-models>.
+- Hecht, "Effects of Heat Treatments and Compositional Modification on Carbide
+  Network and Matrix Microstructure in Ultrahigh Carbon Steels," PhD thesis,
+  Carnegie Mellon University (2017).
 
 ## Testing
 
@@ -154,25 +176,18 @@ must match the `label` column of the sqlite `sample` table.
 uv run pytest
 ```
 
-Tests run entirely on synthetic fixtures (tiny generated sqlite + images +
-an aluminum stub dataset) — the real datasets are **not** required. The
-end-to-end test (tests/test_pipeline.py) proves a non-steel family flows
-through the pipeline and abstains on properties instead of fabricating them.
+The suite runs on synthetic fixtures (a generated sqlite, tiny images, a stub
+aluminum dataset) and does not require any real data. One end-to-end test
+pushes a non-steel image through the pipeline and checks that property
+prediction declines rather than extrapolating.
 
 ## Known limitations
 
-- **Weak sample-level labels**: hardness is measured per sample, not per
-  micrograph; features are averaged across a sample's micrographs, and a
-  single-image `predict` inherits that approximation.
-- **Tiny calibration set**: hardness labels number in the tens at best, so
-  only leave-one-out CV is meaningful and error bars are wide.
-- **Router realism**: the non-steel class is a stub until real MicroNet/EM3M
-  images are dropped into `data/micronet_al/`; conformal abstention is only
-  as good as its calibration distribution.
-- **One segmenter per mask taxonomy**: currently ferrous-only; other
-  families abstain at the feature stage until they get masks and a segmenter.
-- **2D micrographs**: area fractions are stereological proxies for volume
-  fractions; morphology stats are in px² (µm conversion via
-  `scale_um_per_px` is a TODO).
-- **Segmentation ground truth is small** (~tens of images), so the segmenter
-  drives most downstream uncertainty.
+Hardness is measured per sample, not per micrograph, so image features are
+averaged across each sample's micrographs and a single-image prediction
+inherits that approximation. Seven labeled samples support leave-one-out CV
+and nothing stronger; error bars are wide. Everything is one alloy family, and
+2D area fractions are stereological proxies for volume fractions. Morphology
+statistics are currently in pixels squared; converting through each record's
+micron-per-pixel scale is planned but not done. The segmentation ground truth
+is 24 images, and segmentation error propagates into every downstream number.

@@ -1,9 +1,9 @@
-"""Canonical records: the material-agnostic currency between adapters and tasks.
+"""Canonical records: the common format between dataset adapters and tasks.
 
-Every dataset adapter emits ``CanonicalRecord`` instances; every task (router,
-classifier, segmenter, feature extraction) consumes them. Only image + scale +
-modality are core fields — labels, masks, and properties are optional so that
-partially-annotated datasets still flow through the pipeline.
+Every adapter emits ``CanonicalRecord`` instances and every task (router,
+classifier, segmenter, feature extraction) consumes them. Image, scale, and
+modality are the core fields; labels, masks, and properties are optional so
+partially annotated datasets still work.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ class CanonicalRecord:
       record_id, image_path, scale_um_per_px, modality
     Optional annotations:
       group_id         split unit (physical sample); defaults to record_id
-      taxonomy_labels  taxonomy node ids describing the image (never bare strings)
+      taxonomy_labels  taxonomy node ids describing the image
       mask_path        pixel-level label mask, if this record is in a benchmark
       mask_class_nodes taxonomy node id for each integer mask class (index = class)
       properties       measured sample properties, e.g. {"hardness_hv": 310.0}

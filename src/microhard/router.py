@@ -62,7 +62,7 @@ class ConformalAbstainer:
 
     def prediction_set(self, probabilities: np.ndarray) -> np.ndarray:
         if self.qhat is None:
-            raise RuntimeError("abstainer is not calibrated — call calibrate() first")
+            raise RuntimeError("abstainer is not calibrated; call calibrate() first")
         return np.flatnonzero(1.0 - probabilities <= self.qhat)
 
 
@@ -87,7 +87,7 @@ def train_router(cfg: Config) -> Path:
     if len(families) < 2:
         print(
             f"[microhard] warning: only one family ({families[0]}) in the enabled "
-            "adapters — the router will trivially predict it; add a second adapter "
+            "adapters, so the router will trivially predict it; add a second adapter "
             "for a meaningful steel-vs-other router."
         )
 
@@ -98,7 +98,7 @@ def train_router(cfg: Config) -> Path:
     splits = split_records_by_group(records, cfg.router_calib_frac, 0.0, cfg.seed)
     train_records, calib_records = splits["train"], splits["val"]
     if not calib_records:
-        raise ValueError("router_calib_frac left no calibration groups — increase it")
+        raise ValueError("router_calib_frac left no calibration groups; increase it")
     print(
         f"[microhard] router: {len(train_records)} train / {len(calib_records)} "
         f"calibration records over families {families}"

@@ -1,8 +1,8 @@
-"""Hardness head for ferrous/UHCS: constituent features -> Vickers HV.
+"""Hardness head for ferrous/UHCS: constituent features to Vickers HV.
 
-Gradient boosting + a linear (scaled Ridge) baseline, evaluated with
-leave-one-sample-out CV — the honest choice for the tiny hand-transcribed
-label set. The better model (by LOO MAE) is refit on all data and kept.
+Gradient boosting plus a scaled-Ridge linear baseline, evaluated with
+leave-one-sample-out CV, which is all the label count supports. The model
+with the lower LOO MAE is refit on all data and kept.
 """
 
 from __future__ import annotations

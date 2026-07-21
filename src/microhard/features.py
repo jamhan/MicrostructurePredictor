@@ -1,9 +1,9 @@
-"""Material-agnostic FeatureVector from predicted segmentation masks.
+"""FeatureVector: what a segmentation mask becomes for the property models.
 
-Feature names are built from taxonomy node ids — ``frac:ferrous/network``,
-``n_regions:ferrous/spheroidite`` — never bare class indices, so features
-from different material families live in one namespace. Property heads
-(heads/) consume FeatureVector only; they never see raw images.
+Feature names are built from taxonomy node ids (``frac:ferrous/network``,
+``n_regions:ferrous/spheroidite``), so features from different material
+families share one namespace. Property heads consume these vectors and
+nothing else.
 """
 
 from __future__ import annotations

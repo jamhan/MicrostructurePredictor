@@ -87,7 +87,7 @@ def train_segmentation(cfg: Config) -> Path:
     splits = split_records_by_group(records, cfg.val_frac, 0.0, cfg.seed)
     train_records, val_records = splits["train"], splits["val"]
     if not val_records:  # tiny benchmark: validate on train rather than nothing
-        print("[microhard] warning: no val groups — validating on the training records")
+        print("[microhard] warning: no val groups; validating on the training records")
         val_records = train_records
     print(f"[microhard] {len(train_records)} train / {len(val_records)} val masked records")
 

@@ -25,7 +25,7 @@ class BaseAdapter(ABC):
     def __init__(self, cfg: Config, taxonomy: Taxonomy) -> None:
         self.cfg = cfg
         self.taxonomy = taxonomy
-        taxonomy.node(self.family)  # fail fast on an unregistered family
+        taxonomy.node(self.family)  # an unregistered family is a configuration error
 
     @abstractmethod
     def records(self) -> list[CanonicalRecord]:

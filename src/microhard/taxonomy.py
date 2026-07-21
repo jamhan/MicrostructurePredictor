@@ -1,9 +1,10 @@
 """Hierarchical label registry: family -> constituent -> morphology.
 
 Loaded from a taxonomy file (YAML by default; TOML and JSON also accepted by
-extension). Node ids are path-style — ``ferrous``, ``ferrous/pearlite``,
-``ferrous/pearlite/lamellar`` — and every label used anywhere in the pipeline
-must be a registered node id, never a bare string.
+extension). Node ids are path-style: ``ferrous``, ``ferrous/pearlite``,
+``ferrous/pearlite/lamellar``. Every label used anywhere in the pipeline must
+be a registered node id; free-form label strings are treated as errors, which
+is what keeps multiple datasets in one vocabulary.
 
 ``Taxonomy.load(None)`` loads the bundled seed file
 (src/microhard/taxonomy.yaml).

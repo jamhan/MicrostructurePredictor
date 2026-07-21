@@ -99,7 +99,7 @@ def extract_features_cmd(config: Optional[Path] = _CONFIG_OPTION) -> None:
 
 @app.command("fit-hardness")
 def fit_hardness_cmd(config: Optional[Path] = _CONFIG_OPTION) -> None:
-    """Fit the ferrous/uhcs hardness head (LOO CV); skips cleanly with no labels."""
+    """Fit the ferrous/uhcs hardness head with leave-one-out CV."""
     from .heads.hardness import HARDNESS_HINT
     from .pipeline import fit_property_head
 
@@ -122,7 +122,7 @@ def predict(
 
     typer.echo(f"\n{image.name}")
     if result.family is None:
-        typer.echo(f"  family: UNKNOWN — {result.abstentions.get('family', 'abstained')}")
+        typer.echo(f"  family: UNKNOWN. {result.abstentions.get('family', 'abstained')}")
         if result.family_probabilities:
             for fam, p in sorted(result.family_probabilities.items(), key=lambda kv: -kv[1]):
                 typer.echo(f"    p({fam}) = {p:.2f}")
@@ -140,7 +140,7 @@ def predict(
         typer.echo("")
         for name, value in result.properties.items():
             typer.echo(f"  {name}: {value:.0f}")
-        typer.echo("  (single-image estimate from a sample-level calibration — treat as rough)")
+        typer.echo("  (single-image estimate from a sample-level calibration; treat as rough)")
     for key, reason in result.abstentions.items():
         if key not in {"family", "features"}:
             typer.echo(f"\n  {key}: unavailable — {reason}")

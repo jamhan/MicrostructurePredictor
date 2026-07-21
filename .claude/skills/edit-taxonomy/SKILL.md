@@ -6,28 +6,26 @@ description: Extend or modify the materials taxonomy (families, constituents, mo
 # Edit the taxonomy
 
 The taxonomy (src/microhard/taxonomy.yaml) is the single label registry:
-family → constituent → morphology, max 3 levels. Node ids are derived from
-the YAML keys as paths (`ferrous/pearlite/lamellar`). Every label in the
-pipeline is a node id — bare strings are a bug.
+family, constituent, morphology, at most three levels. Node ids are derived
+from the YAML keys as paths (`ferrous/pearlite/lamellar`), and every label in
+the pipeline must be one of them.
 
-## Rules
+Things to know before editing:
 
-- **Ids are contracts.** Checkpoints (`class_nodes` in segmenter), feature
-  CSV columns (`frac:ferrous/network`), fitted head pickles, and adapter
-  label maps all reference node ids. Renaming a node orphans them — prefer
-  adding; if you must rename, retrain/re-extract everything downstream and
-  update `PRIMARY_TO_NODES` / `SEG_CLASS_NODES` in adapters/uhcs.py plus any
-  folder-adapter labels.csv files.
-- Keys: lowercase, hyphens over spaces. Give each node a human `name:`.
-- New **family** = new level-1 key. The router only learns it after
+- Node ids are referenced by trained artifacts: the segmenter checkpoint
+  stores `class_nodes`, feature CSV columns embed ids
+  (`frac:ferrous/network`), fitted head pickles store feature names, and
+  adapter label maps point at ids. Renaming a node orphans all of those.
+  Prefer adding nodes. If a rename is unavoidable, retrain the affected
+  models, re-extract features, and update `PRIMARY_TO_NODES` and
+  `SEG_CLASS_NODES` in adapters/uhcs.py plus any folder-adapter labels.csv.
+- Keys are lowercase with hyphens; give each node a human-readable `name:`.
+- A new family is a new top-level key. The router only learns it after
   `train-router` runs with an adapter of that family enabled.
-- Depth beyond 3 levels is rejected at load time by design.
+- Nesting deeper than three levels is rejected at load time.
 
-## Workflow
-
-1. Edit `src/microhard/taxonomy.yaml` (or point `Config.taxonomy_path` at a
-   project-specific file — `.toml`/`.json` also load).
-2. `uv run microhard taxonomy` — eyeball the tree.
-3. `uv run pytest tests/test_taxonomy.py tests/test_adapters.py` — adapter
-   label maps are validated against the taxonomy, so stale references fail
-   here, loudly, before any training run.
+Workflow: edit the YAML (or point `Config.taxonomy_path` at a project file;
+`.toml` and `.json` also load), check the tree with `uv run microhard
+taxonomy`, then run `uv run pytest tests/test_taxonomy.py
+tests/test_adapters.py`. Adapter label maps are validated against the
+taxonomy, so stale references fail in tests before any training run.

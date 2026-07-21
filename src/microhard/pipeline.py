@@ -1,12 +1,12 @@
-"""End-to-end orchestration: image -> family -> features -> property heads.
+"""End-to-end orchestration: image to family to features to property heads.
 
-``predict_image`` is the single routing entry point. It abstains — with a
-recorded reason, never a crash — when the family is unknown, the segmenter
-doesn't cover the family, or no fitted property head exists.
+``predict_image`` is the routing entry point. When the family is unknown, the
+segmenter does not cover the family, or no fitted property head exists, it
+records the reason in ``abstentions`` and moves on rather than raising.
 
-``fit_property_head`` is the generic training entry point for any registered
-(scope, property) head; property values come from the enabled adapters'
-canonical records, so heads never touch dataset-specific files.
+``fit_property_head`` trains any registered (scope, property) head. Property
+values come from the adapters' canonical records, so heads read no
+dataset-specific files.
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ def predict_image(cfg: Config, image_path: Path, family: str | None = None) -> P
     """Route one micrograph through the full pipeline.
 
     ``family`` overrides the router (useful before a router is trained, and
-    for tests); otherwise the conformal router decides — and may abstain.
+    for tests); otherwise the conformal router decides, and may abstain.
     """
     from .router import load_router, route_image
     from .segment import load_segmenter, segment_image
@@ -53,7 +53,7 @@ def predict_image(cfg: Config, image_path: Path, family: str | None = None) -> P
 
     # --- stage 1: family -----------------------------------------------------
     if family is not None:
-        taxonomy.node(family)  # unknown override should fail loudly
+        taxonomy.node(family)  # reject an unknown family id before doing any work
         result.family = family
     else:
         try:
@@ -66,7 +66,7 @@ def predict_image(cfg: Config, image_path: Path, family: str | None = None) -> P
         result.family_probabilities = routed.probabilities
         if routed.family is None:
             result.abstentions["family"] = (
-                f"unknown family — conformal prediction set {routed.prediction_set or '()'} "
+                f"unknown family: conformal prediction set {routed.prediction_set or '()'} "
                 "is not a single family"
             )
             return result
@@ -99,7 +99,7 @@ def predict_image(cfg: Config, image_path: Path, family: str | None = None) -> P
         head = heads.load_fitted(cfg, scope, property_name)
         if head is None:
             result.abstentions[property_name] = (
-                f"no calibrated model for ({scope}, {property_name}) — insufficient "
+                f"no calibrated model for ({scope}, {property_name}): insufficient "
                 "calibration data or fit not run"
             )
         else:
@@ -121,7 +121,7 @@ def fit_property_head(cfg: Config, scope: str, property_name: str) -> dict[str, 
         )
     if not cfg.features_csv.exists():
         raise FileNotFoundError(
-            f"{cfg.features_csv} not found — run `microhard extract-features` first."
+            f"{cfg.features_csv} not found; run `microhard extract-features` first."
         )
 
     taxonomy = Taxonomy.load(cfg.taxonomy_path)
@@ -132,7 +132,7 @@ def fit_property_head(cfg: Config, scope: str, property_name: str) -> dict[str, 
     frame = frame[frame["group_id"].isin(values_by_group)]
     if frame.empty:
         print(
-            f"[microhard] insufficient calibration data — no {property_name} values "
+            f"[microhard] insufficient calibration data: no {property_name} values "
             f"attached to any '{scope}' records."
         )
         return None

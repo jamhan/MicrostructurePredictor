@@ -1,9 +1,9 @@
-"""Shared frozen backbone; every task is a separate trainable head.
+"""Shared frozen backbone; each task trains its own head.
 
-One encoder (resnet50 with MicroNet or ImageNet weights) is shared by the
-router, the constituent classifier, and the segmenter. The backbone is always
-frozen — only heads train. If head-only training underperforms, the next step
-is LoRA/adapter layers here, not full fine-tuning.
+One resnet50 encoder (MicroNet or ImageNet weights) is shared by the router,
+the constituent classifier, and the segmenter, and its weights never train.
+If head-only training proves limiting, the intended next step is LoRA-style
+adapter layers here rather than full fine-tuning.
 """
 
 from __future__ import annotations
@@ -19,12 +19,12 @@ PAD_MULTIPLE = 32  # encoder downsamples 5x; H and W must be divisible by 32
 
 
 def build_encoder(cfg: Config) -> nn.Module:
-    """The shared backbone, NOT yet frozen.
+    """Build the shared backbone (not yet frozen).
 
-    Materialized once to checkpoints/backbone.pt and reloaded from there ever
-    after, so every head (router, classifier, segmenter) — whenever it is
-    trained or loaded — sees the *identical* frozen weights, even if the
-    MicroNet URL is unreachable later.
+    The first call writes the weights to checkpoints/backbone.pt; later calls
+    reload that file. Every head therefore sees identical encoder weights no
+    matter when it was trained, and a weight download failing later cannot
+    change the features under an already-trained head.
     """
     encoder = smp.encoders.get_encoder(cfg.encoder, in_channels=3, depth=5, weights=None)
     cache = cfg.backbone_checkpoint
@@ -39,14 +39,15 @@ def build_encoder(cfg: Config) -> nn.Module:
         load_micronet_weights(encoder, cfg)
     cache.parent.mkdir(parents=True, exist_ok=True)
     torch.save(encoder.state_dict(), cache)
-    print(f"[microhard] shared backbone materialized -> {cache}")
+    print(f"[microhard] shared backbone saved -> {cache}")
     return encoder
 
 
 def load_micronet_weights(encoder: nn.Module, cfg: Config) -> bool:
-    """Best-effort load of NASA MicroNet weights; never blocks.
+    """Try to load the NASA MicroNet weights.
 
-    On any failure the encoder keeps the ImageNet weights it was built with.
+    On any failure the encoder keeps the ImageNet weights it was built with,
+    so training can proceed offline.
     """
     try:
         state = torch.hub.load_state_dict_from_url(cfg.micronet_url, map_location="cpu")
@@ -59,7 +60,7 @@ def load_micronet_weights(encoder: nn.Module, cfg: Config) -> bool:
             raise RuntimeError("no keys matched the encoder state dict")
         print(f"[microhard] loaded MicroNet encoder weights ({loaded} tensors)")
         return True
-    except Exception as exc:  # noqa: BLE001 — any failure means "fall back"
+    except Exception as exc:  # noqa: BLE001 (any failure falls back to ImageNet weights)
         print(
             f"[microhard] MicroNet weights unavailable ({exc}); using ImageNet weights.\n"
             "            See https://github.com/nasa/pretrained-microscopy-models "

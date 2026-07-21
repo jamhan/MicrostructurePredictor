@@ -57,7 +57,7 @@ def train_classifier(cfg: Config) -> Path:
     records = labeled_records(cfg, taxonomy)
     if not records:
         raise FileNotFoundError(
-            "No labeled records with images on disk — run `bash download.sh` first."
+            "No labeled records with images on disk; run `bash download.sh` first."
         )
     classes = sorted({label for r in records if (label := _label(r)) is not None})
     splits = split_records_by_group(records, cfg.val_frac, cfg.test_frac, cfg.seed)
