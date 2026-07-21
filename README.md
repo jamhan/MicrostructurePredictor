@@ -193,6 +193,12 @@ If you use this data, cite:
   Network and Matrix Microstructure in Ultrahigh Carbon Steels," PhD thesis,
   Carnegie Mellon University (2017).
 
+Methods literature that shapes the design, with the concrete takeaway for this
+codebase noted against each paper, is in [docs/PRIOR_ART.md](docs/PRIOR_ART.md).
+It covers Azimi et al. 2018 on separating matrix constituents (the most direct
+unblock for hardness), the Holm et al. 2020 field overview, and Stuckner et al.
+2022 on microscopy pretraining.
+
 ## Testing
 
 ```bash

@@ -3,6 +3,10 @@ data/*
 !data/hardness_labels.csv
 !data/property_lookup.csv
 
+# secrets: .env holds API tokens and must never reach this public repo
+.env
+.env.*
+
 checkpoints/
 .venv/
 __pycache__/
