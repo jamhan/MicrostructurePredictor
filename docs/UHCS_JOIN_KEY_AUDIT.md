@@ -104,11 +104,24 @@ linked to a sample row at all. Another 75 are linked to AC/AC1-labelled samples
 whose treatment is missing or uses an unresolved code, and 164 belong to
 samples whose grade is not identified by the current metadata.
 
-## Decision
+## Implementation status
 
-The next implementation should add exact temperature/hold leaves for the 14
-water-quench combinations above and make the UHCS adapter use the structured
-temperature and time columns. The adapter must stop emitting the coarse AC1
-water-quench and unspecified-quench keys as property join keys. Property-source
-research can then proceed against exact combinations, starting with conditions
-that cover the most images.
+The exact temperature/hold leaves for these 14 water-quench combinations are
+now registered. The UHCS adapter uses the structured temperature and time
+columns, cross-checks them against the sample label, and emits no coarse
+fallback. This produces 215 exact-key images across 15 database groups. The
+duplicate `t970c_24h` rows remain separate database groups for now and must be
+assigned to one conservative split group; the adapter now does this whenever
+sample labels are duplicated.
+
+## Hardness source check
+
+Hecht's thesis Appendix Tables A.1 and A.2 were checked against the rendered
+pages. They report hardness for 90-minute treatments only: 970 C under three
+cooling routes, and water quenches from 800 C, 900 C, and 970 C. Those values
+are already represented in `data/hardness_labels.csv` as direct measurements.
+The thesis does not report hardness for the other exact hold times above, so no
+new distant rows were added to `data/property_lookup.csv`.
+
+The next data step is therefore external source discovery or new measurements,
+not extrapolating the 90-minute values across hold times.

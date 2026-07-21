@@ -9,12 +9,14 @@ where filename stems match.
 
 from __future__ import annotations
 
+import math
+import re
 import sqlite3
 from pathlib import Path
 
 import pandas as pd
 
-from ..normalize import normalize_join_key
+from ..normalize import normalize_grade, normalize_structured_condition
 from ..records import MEASURED, CanonicalRecord
 from . import register_adapter
 from .base import BaseAdapter
@@ -44,6 +46,11 @@ SEG_CLASS_NODES: tuple[str, ...] = (
 _IMAGE_DIR_NAMES = ("images", "micrographs", "src", "img")
 _MASK_DIR_NAMES = ("labels", "annotations", "masks", "ground_truth", "gt")
 _IMAGE_SUFFIXES = {".tif", ".tiff", ".png", ".jpg", ".jpeg", ".bmp"}
+_THERMAL_STEP = re.compile(
+    r"(?<![-\w])(\d+(?:\.\d+)?)\s*C\s+(\d+(?:\.\d+)?)\s*([MH])\b",
+    re.IGNORECASE,
+)
+_TEMPERATURE_TOKEN = re.compile(r"(?<![-\w])\d+(?:\.\d+)?\s*C\b", re.IGNORECASE)
 
 
 def load_metadata(sqlite_path: Path) -> pd.DataFrame:
@@ -107,6 +114,7 @@ class UHCSAdapter(BaseAdapter):
     def records(self) -> list[CanonicalRecord]:
         cfg = self.cfg
         meta = load_metadata(cfg.sqlite_path)
+        group_ids = self._group_ids(meta)
         hardness = load_hardness_labels(cfg.hardness_csv)
         hv_by_sample = dict(zip(hardness["sample_label"], hardness["hardness_hv"]))
         masks = find_benchmark_masks(cfg.segmentation_dir / "uhcs")
@@ -129,11 +137,7 @@ class UHCSAdapter(BaseAdapter):
                     image_path=image_path,
                     scale_um_per_px=scale,
                     modality="SEM",
-                    group_id=(
-                        f"uhcs-sample-{row['sample_key']}"
-                        if pd.notna(row.get("sample_key"))
-                        else f"uhcs-orphan-{row['micrograph_id']}"
-                    ),
+                    group_id=self._group_id(row, group_ids),
                     taxonomy_labels=labels,
                     mask_path=mask_path,
                     mask_class_nodes=SEG_CLASS_NODES if mask_path is not None else None,
@@ -146,20 +150,77 @@ class UHCSAdapter(BaseAdapter):
         return out
 
     @staticmethod
-    def _join_key(row: pd.Series) -> tuple[str | None, str | None]:
-        """(alloy_grade, condition) node ids from the sample metadata.
+    def _group_ids(meta: pd.DataFrame) -> dict[int, str]:
+        """Sample id -> conservative physical split group.
 
-        The grade comes from the casting prefix of the sample label ("AC1 970C
-        90M WQ"), the condition from the ``cool_method`` code, falling back to
-        the label when that column is empty. Codes the alias table does not
-        recognise (``WC``, ``650-1H``) yield None, which keeps those samples
-        out of the join instead of guessing a route for them.
+        UHCSDB contains two sample rows with the same treatment label. They
+        may be separate specimens, but treating them as independent would put
+        near-identical material on both sides of a split. Duplicate labels are
+        therefore grouped together until their independence is verified.
+        """
+        sample_rows = meta[["sample_key", "sample_label"]].dropna(subset=["sample_key"])
+        sample_rows = sample_rows.drop_duplicates(subset=["sample_key"])
+        ids_by_label: dict[str, list[int]] = {}
+        for _, sample in sample_rows.iterrows():
+            label = str(sample["sample_label"]) if pd.notna(sample["sample_label"]) else ""
+            ids_by_label.setdefault(label, []).append(int(sample["sample_key"]))
+        out: dict[int, str] = {}
+        for label, sample_ids in ids_by_label.items():
+            ids = sorted(sample_ids)
+            group = (
+                f"uhcs-samples-{'-'.join(map(str, ids))}"
+                if label and len(ids) > 1
+                else f"uhcs-sample-{ids[0]}"
+            )
+            out.update({sample_id: group for sample_id in ids})
+        return out
+
+    @staticmethod
+    def _group_id(row: pd.Series, group_ids: dict[int, str]) -> str:
+        sample_key = row.get("sample_key")
+        if pd.notna(sample_key):
+            return group_ids[int(sample_key)]
+        return f"uhcs-orphan-{row['micrograph_id']}"
+
+    @staticmethod
+    def _join_key(row: pd.Series) -> tuple[str | None, str | None]:
+        """Exact (alloy_grade, condition) ids from structured sample metadata.
+
+        Only simple water-quench rows whose label agrees with the structured
+        temperature and hold columns receive a condition. Multi-step routes,
+        special cooling codes, and coarse Q/AR/FC routes stay unjoined until
+        their full processing details are verified.
         """
         label = row.get("sample_label")
+        raw_label = str(label) if pd.notna(label) else None
+        return normalize_grade(raw_label), UHCSAdapter._exact_condition(row, raw_label)
+
+    @staticmethod
+    def _exact_condition(row: pd.Series, label: str | None) -> str | None:
         cool = row.get("cool_method")
-        return normalize_join_key(
-            str(label) if pd.notna(label) else None,
-            str(cool) if pd.notna(cool) else None,
+        if not pd.notna(cool) or str(cool).strip().upper() != "WQ" or label is None:
+            return None
+        steps = _THERMAL_STEP.findall(label)
+        if len(steps) != 1 or len(_TEMPERATURE_TOKEN.findall(label)) != 1:
+            return None
+        label_temperature, label_hold, label_unit = steps[0]
+        temperature = row.get("anneal_temperature")
+        hold = row.get("anneal_time")
+        hold_unit = row.get("anneal_time_unit")
+        if not all(pd.notna(value) for value in (temperature, hold, hold_unit)):
+            return None
+        row_minutes = float(hold) * (60.0 if str(hold_unit).strip().upper() == "H" else 1.0)
+        label_minutes = float(label_hold) * (60.0 if label_unit.upper() == "H" else 1.0)
+        if not math.isclose(float(temperature), float(label_temperature)) or not math.isclose(
+            row_minutes, label_minutes
+        ):
+            return None
+        return normalize_structured_condition(
+            str(cool),
+            temperature,
+            row.get("anneal_temp_unit"),
+            hold,
+            hold_unit,
         )
 
     @staticmethod

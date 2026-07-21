@@ -127,6 +127,27 @@ CONDITION_ALIASES: dict[str, str] = {
     "hardened & tempered": "condition/quench_temper",
 }
 
+# Exact temperature/hold leaves currently supported by UHCSDB's simple WQ
+# records. Durations are normalized to minutes so a source that says 1.5 h
+# resolves to the same id as the database's 90 M.
+_WATER_QUENCH = "condition/austenitize/water_quench"
+STRUCTURED_CONDITIONS: dict[tuple[str, float, float], str] = {
+    (_WATER_QUENCH, 700.0, 5.0): f"{_WATER_QUENCH}/t700c_5m",
+    (_WATER_QUENCH, 750.0, 5.0): f"{_WATER_QUENCH}/t750c_5m",
+    (_WATER_QUENCH, 800.0, 5.0): f"{_WATER_QUENCH}/t800c_5m",
+    (_WATER_QUENCH, 800.0, 90.0): f"{_WATER_QUENCH}/t800c_90m",
+    (_WATER_QUENCH, 800.0, 180.0): f"{_WATER_QUENCH}/t800c_3h",
+    (_WATER_QUENCH, 800.0, 480.0): f"{_WATER_QUENCH}/t800c_8h",
+    (_WATER_QUENCH, 800.0, 1440.0): f"{_WATER_QUENCH}/t800c_24h",
+    (_WATER_QUENCH, 800.0, 5100.0): f"{_WATER_QUENCH}/t800c_85h",
+    (_WATER_QUENCH, 900.0, 90.0): f"{_WATER_QUENCH}/t900c_90m",
+    (_WATER_QUENCH, 970.0, 180.0): f"{_WATER_QUENCH}/t970c_3h",
+    (_WATER_QUENCH, 970.0, 480.0): f"{_WATER_QUENCH}/t970c_8h",
+    (_WATER_QUENCH, 970.0, 1440.0): f"{_WATER_QUENCH}/t970c_24h",
+    (_WATER_QUENCH, 970.0, 2880.0): f"{_WATER_QUENCH}/t970c_48h",
+    (_WATER_QUENCH, 1000.0, 5.0): f"{_WATER_QUENCH}/t1000c_5m",
+}
+
 
 class AmbiguousAliasError(ValueError):
     """A raw string matches two different node ids equally well."""
@@ -196,6 +217,42 @@ def normalize_condition(raw: str | None) -> str | None:
     return None if raw is None else _match(raw, _CONDITION_TABLE, "condition")
 
 
+def normalize_structured_condition(
+    raw_condition: str | None,
+    temperature: float | int | None,
+    temperature_unit: str | None,
+    hold: float | int | None,
+    hold_unit: str | None,
+) -> str | None:
+    """Exact condition id from a route plus structured temperature and hold.
+
+    This is a lookup, not an inference. Unsupported routes, units, or
+    combinations return None rather than falling back to a coarse condition.
+    """
+    if (
+        raw_condition is None
+        or temperature is None
+        or hold is None
+        or str(temperature_unit).strip().upper() != "C"
+    ):
+        return None
+    unit = str(hold_unit).strip().upper() if hold_unit is not None else ""
+    if unit not in {"M", "H"}:
+        return None
+    try:
+        temperature_c = float(temperature)
+        hold_minutes = float(hold) * (60.0 if unit == "H" else 1.0)
+    except (TypeError, ValueError):
+        return None
+    # Structured route fields must equal a known alias after canonicalization.
+    # Containment matching would incorrectly treat a special code such as
+    # WQ-2C as ordinary WQ.
+    base = _CONDITION_TABLE.get(canonical_tokens(raw_condition))
+    if base is None:
+        return None
+    return STRUCTURED_CONDITIONS.get((base, temperature_c, hold_minutes))
+
+
 def _resolve_matches(matches: set[str], raw: tuple[str | None, ...], kind: str) -> str | None:
     if not matches:
         return None
@@ -235,3 +292,4 @@ def check_aliases(taxonomy: Taxonomy) -> None:
     """
     taxonomy.require(sorted(set(GRADE_ALIASES.values())), axis=GRADE_AXIS)
     taxonomy.require(sorted(set(CONDITION_ALIASES.values())), axis=CONDITION_AXIS)
+    taxonomy.require(sorted(set(STRUCTURED_CONDITIONS.values())), axis=CONDITION_AXIS)

@@ -1,10 +1,14 @@
 """End-to-end proof over synthetic data: the pipeline runs on a steel family,
 runs on a non-steel family, and abstains instead of fabricating properties."""
 
+import sqlite3
+
 import pytest
 
-from microhard.pipeline import fit_property_head, predict_image
+from microhard.pipeline import _property_by_group, fit_property_head, predict_image
+from microhard.properties import PROPERTY_LOOKUP_COLUMNS
 from microhard.segment import train_segmentation
+from microhard.taxonomy import Taxonomy
 
 
 @pytest.fixture()
@@ -63,6 +67,24 @@ def test_predict_without_router_abstains_on_family(two_family_cfg):
     result = predict_image(two_family_cfg, two_family_cfg.micrographs_dir / "micrograph1.png")
     assert result.family is None
     assert "train-router" in result.abstentions["family"]
+
+
+def test_property_lookup_is_joined_into_training_values(synthetic_db) -> None:
+    with sqlite3.connect(synthetic_db.sqlite_path) as con:
+        con.execute(
+            "UPDATE sample SET label = 'AC1 800C 90M WQ', cool_method = 'WQ', "
+            "anneal_temperature = 800, anneal_time = 90, anneal_time_unit = 'M' "
+            "WHERE sample_id = 1"
+        )
+    row = (
+        "grade/ferrous/uhcs_ac1,condition/austenitize/water_quench/t800c_90m,"
+        "hardness_hv,500,HV,,unreported,,medium,Test source,https://example.invalid/,fixture"
+    )
+    synthetic_db.property_lookup_csv.write_text(
+        ",".join(PROPERTY_LOOKUP_COLUMNS) + "\n" + row + "\n"
+    )
+    values = _property_by_group(synthetic_db, Taxonomy.load(None), "hardness_hv")
+    assert values["uhcs-sample-1"] == 500.0
 
 
 def test_predict_rejects_unknown_family_override(two_family_cfg):

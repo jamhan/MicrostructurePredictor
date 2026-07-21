@@ -64,19 +64,53 @@ def test_uhcs_attaches_hardness_properties(synthetic_db, taxonomy) -> None:
 
 
 def test_uhcs_emits_a_join_key(synthetic_db, taxonomy) -> None:
-    """Sample label + cool_method become (alloy_grade, condition) node ids."""
+    """Structured treatment metadata becomes an exact condition node."""
     con = sqlite3.connect(synthetic_db.sqlite_path)
-    con.execute("UPDATE sample SET label = 'AC1 970C 90M WQ', cool_method = 'WQ' WHERE sample_id = 1")
+    con.execute(
+        "UPDATE sample SET label = 'AC1 970C 3H WQ', cool_method = 'WQ', "
+        "anneal_temperature = 970, anneal_time = 3, anneal_time_unit = 'H' "
+        "WHERE sample_id = 1"
+    )
     con.execute("UPDATE sample SET label = 'ET Gyro', cool_method = NULL WHERE sample_id = 2")
     con.commit()
     con.close()
 
     records = UHCSAdapter(synthetic_db, taxonomy).validated_records()
     s1 = next(r for r in records if r.group_id == "uhcs-sample-1")
-    assert s1.join_key == ("grade/ferrous/uhcs_ac1", "condition/austenitize/water_quench")
+    assert s1.join_key == (
+        "grade/ferrous/uhcs_ac1",
+        "condition/austenitize/water_quench/t970c_3h",
+    )
 
     s2 = next(r for r in records if r.group_id == "uhcs-sample-2")
     assert s2.join_key is None  # unrecognised metadata joins to nothing
+
+
+@pytest.mark.parametrize(
+    "label,cooling,temp,hold,unit",
+    [
+        ("AC1 970C 3H Q", "Q", 970, 3, "H"),
+        ("AC1 970C 3H WQ", "WQ", 800, 3, "H"),
+        ("AC1 800C 900C 970C 3H WQ", "WQ", 970, 3, "H"),
+        ("AC1 970C 90M WQ-2C", "WQ-2C", 970, 90, "M"),
+    ],
+)
+def test_uhcs_rejects_coarse_or_inconsistent_conditions(
+    synthetic_db, taxonomy, label, cooling, temp, hold, unit
+) -> None:
+    with sqlite3.connect(synthetic_db.sqlite_path) as con:
+        con.execute(
+            "UPDATE sample SET label = ?, cool_method = ?, anneal_temperature = ?, "
+            "anneal_time = ?, anneal_time_unit = ? WHERE sample_id = 1",
+            (label, cooling, temp, hold, unit),
+        )
+    record = next(
+        record
+        for record in UHCSAdapter(synthetic_db, taxonomy).validated_records()
+        if record.group_id == "uhcs-sample-1"
+    )
+    assert record.alloy_grade == "grade/ferrous/uhcs_ac1"
+    assert record.condition is None
 
 
 def test_uhcs_tags_measured_hardness(synthetic_db, taxonomy) -> None:
@@ -84,6 +118,17 @@ def test_uhcs_tags_measured_hardness(synthetic_db, taxonomy) -> None:
     records = UHCSAdapter(synthetic_db, taxonomy).validated_records()
     s1 = next(r for r in records if r.group_id == "uhcs-sample-1")
     assert s1.property_sources == {"hardness_hv": MEASURED}
+
+
+def test_duplicate_sample_labels_share_a_split_group(synthetic_db, taxonomy) -> None:
+    with sqlite3.connect(synthetic_db.sqlite_path) as con:
+        con.execute("UPDATE sample SET label = 'AC1 970C 24H WQ' WHERE sample_id IN (1, 2)")
+    records = UHCSAdapter(synthetic_db, taxonomy).validated_records()
+    duplicate_groups = {
+        record.group_id for record in records if record.group_id == "uhcs-samples-1-2"
+    }
+    assert duplicate_groups == {"uhcs-samples-1-2"}
+    assert sum(record.group_id == "uhcs-samples-1-2" for record in records) == 6
 
 
 def test_validated_records_rejects_a_grade_used_as_a_label(synthetic_db, taxonomy) -> None:

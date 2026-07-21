@@ -129,6 +129,35 @@ condition:
       children:
         water_quench:
           name: Water quenched
+          children:
+            t700c_5m:
+              name: 700 C for 5 min, water quenched
+            t750c_5m:
+              name: 750 C for 5 min, water quenched
+            t800c_5m:
+              name: 800 C for 5 min, water quenched
+            t800c_90m:
+              name: 800 C for 90 min, water quenched
+            t800c_3h:
+              name: 800 C for 3 h, water quenched
+            t800c_8h:
+              name: 800 C for 8 h, water quenched
+            t800c_24h:
+              name: 800 C for 24 h, water quenched
+            t800c_85h:
+              name: 800 C for 85 h, water quenched
+            t900c_90m:
+              name: 900 C for 90 min, water quenched
+            t970c_3h:
+              name: 970 C for 3 h, water quenched
+            t970c_8h:
+              name: 970 C for 8 h, water quenched
+            t970c_24h:
+              name: 970 C for 24 h, water quenched
+            t970c_48h:
+              name: 970 C for 48 h, water quenched
+            t1000c_5m:
+              name: 1000 C for 5 min, water quenched
         oil_quench:
           name: Oil quenched
         air_cool:

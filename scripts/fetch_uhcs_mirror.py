@@ -24,6 +24,7 @@ import json
 import sqlite3
 import sys
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 MDF = "https://data.materialsdatafacility.org/legacy/mdr_item_1496_v1"
@@ -58,6 +59,15 @@ def crop_banner_inplace(path: Path) -> None:
     im = np.asarray(Image.open(path))
     if im.shape[0] == 484 + CROPBAR:
         Image.fromarray(im[:-CROPBAR]).save(path)
+
+
+def fetch_micrograph(name: str) -> bool:
+    """Fetch and preprocess one gallery image."""
+    dest = MICROGRAPHS / name
+    if not fetch(f"{MDF}/micrographs/micrographs/{name}", dest):
+        return False
+    crop_banner_inplace(dest)
+    return True
 
 
 def convert_label(tif: Path) -> None:
@@ -118,14 +128,13 @@ def main() -> int:
     # micrographs: benchmark set always; everything with --all
     wanted = paths if everything else sorted(set(bench_names) & set(paths)) or bench_names
     print(f"micrographs to fetch: {len(wanted)}")
-    for i, name in enumerate(wanted):
-        dest = MICROGRAPHS / name
-        if fetch(f"{MDF}/micrographs/micrographs/{name}", dest):
-            crop_banner_inplace(dest)
-        else:
-            ok = False
-        if (i + 1) % 50 == 0:
-            print(f"  {i + 1}/{len(wanted)}")
+    # The mirror serves independent files, so bounded parallelism cuts a full
+    # gallery fetch from many minutes to roughly one connection's duration.
+    with ThreadPoolExecutor(max_workers=min(16, len(wanted))) as pool:
+        for i, fetched in enumerate(pool.map(fetch_micrograph, wanted), start=1):
+            ok &= fetched
+            if i % 50 == 0:
+                print(f"  {i}/{len(wanted)}")
 
     # benchmark image copies next to the labels (handy for inspection)
     BENCH_IMAGES.mkdir(parents=True, exist_ok=True)

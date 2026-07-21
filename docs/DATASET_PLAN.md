@@ -355,8 +355,9 @@ No dataset has been ingested and no property value has been added. The
 deliverable is vocabulary, schema, and the join, with tests. The lookup table
 is a header and a protocol.
 
-The next steps, in order: fill the table for a handful of pairs that UHCS
-micrographs already carry, using the source paper of the dataset; implement the
-held-out-condition split and run the join-key-only baseline before any model is
-trained on distant labels, so there is a number to beat; then decide, on that
-evidence, whether distant supervision earns its place here.
+The Phase 1 metadata audit and exact water-quench keys are complete. Hecht's
+thesis supplies hardness only for the 90-minute conditions already present in
+`data/hardness_labels.csv`, so the lookup remains empty. The next steps are to
+find an external source with exact grade/treatment matches or obtain new
+measurements, then implement the held-out-condition split and join-key-only
+baseline before training on distant labels.

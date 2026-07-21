@@ -23,6 +23,7 @@ from . import heads
 from .adapters import enabled_adapters
 from .config import Config
 from .features import FeatureVector, aggregate_by_group, feature_names, image_feature_vector
+from .properties import join_properties, load_property_lookup, lookup_index
 from .taxonomy import Taxonomy
 
 
@@ -160,10 +161,12 @@ def _filter_scope(frame: pd.DataFrame, scope: str) -> pd.DataFrame:
 
 
 def _property_by_group(cfg: Config, taxonomy: Taxonomy, property_name: str) -> dict[str, float]:
-    """group_id -> property value, first non-null across adapter records."""
+    """group_id -> measured or joined value, first non-null across records."""
     out: dict[str, float] = {}
+    lookup = lookup_index(load_property_lookup(cfg.property_lookup_csv, taxonomy))
     for adapter in enabled_adapters(cfg, taxonomy):
-        for record in adapter.records():
+        records = join_properties(adapter.validated_records(), lookup, min_confidence="medium")
+        for record in records:
             value = record.properties.get(property_name)
             if value is not None and record.group_id not in out:
                 out[record.group_id] = float(value)

@@ -69,6 +69,9 @@ def test_grade_and_condition_axes_are_registered() -> None:
     grade_ids = {n.id for n in tax.grades()}
     assert grade_ids >= {"grade", "grade/ferrous", "grade/ferrous/aisi_1045"}
     assert all(n.id.startswith("condition") for n in tax.conditions())
+    exact = tax.node("condition/austenitize/water_quench/t970c_24h")
+    assert exact.axis == CONDITION_AXIS
+    assert exact.level == 4
 
 
 def test_axes_do_not_leak_into_families() -> None:

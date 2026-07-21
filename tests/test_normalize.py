@@ -9,6 +9,7 @@ from microhard.normalize import (
     normalize_condition,
     normalize_grade,
     normalize_join_key,
+    normalize_structured_condition,
 )
 from microhard.taxonomy import CONDITION_AXIS, GRADE_AXIS, Taxonomy
 
@@ -119,6 +120,25 @@ def test_join_key_accepts_repeated_agreement() -> None:
 def test_unrecognised_string_yields_no_key() -> None:
     """A missing join is the intended outcome, not an error."""
     assert normalize_join_key("ET Gyro") == (None, None)
+
+
+@pytest.mark.parametrize(
+    "hold,unit,expected",
+    [
+        (90, "M", "condition/austenitize/water_quench/t800c_90m"),
+        (1.5, "H", "condition/austenitize/water_quench/t800c_90m"),
+        (3, "H", "condition/austenitize/water_quench/t800c_3h"),
+    ],
+)
+def test_normalize_structured_condition(hold, unit, expected) -> None:
+    assert normalize_structured_condition("WQ", 800, "C", hold, unit) == expected
+
+
+def test_structured_condition_never_falls_back_to_a_coarse_node() -> None:
+    assert normalize_structured_condition("WQ", 850, "C", 1, "H") is None
+    assert normalize_structured_condition("Q", 800, "C", 3, "H") is None
+    assert normalize_structured_condition("WQ-2C", 800, "C", 3, "H") is None
+    assert normalize_structured_condition("WQ", 800, "F", 3, "H") is None
 
 
 def test_ambiguous_match_raises() -> None:
