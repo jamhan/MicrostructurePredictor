@@ -37,7 +37,7 @@ class Config:
     taxonomy_path: Path | None = None  # None -> bundled src/microhard/taxonomy.yaml
 
     # --- datasets (adapter registry names, see adapters/) ---
-    adapters: list[str] = field(default_factory=lambda: ["uhcs"])
+    adapters: list[str] = field(default_factory=lambda: ["uhcs", "literature_steel"])
 
     # --- model ---
     encoder: str = "resnet50"
@@ -89,6 +89,11 @@ class Config:
     def property_lookup_csv(self) -> Path:
         """Distant-supervision table, keyed by (alloy_grade, condition)."""
         return self.data_dir / "property_lookup.csv"
+
+    @property
+    def literature_manifest_csv(self) -> Path:
+        """Panel-level literature provenance and property matches."""
+        return self.data_dir / "literature_steel" / "manifest.csv"
 
     @property
     def features_csv(self) -> Path:

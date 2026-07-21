@@ -41,5 +41,6 @@ def enabled_adapters(cfg: Config, taxonomy: Taxonomy) -> list:
 
 # Import concrete adapters so registration happens on package import.
 from . import folder as _folder  # noqa: E402,F401
+from . import literature as _literature  # noqa: E402,F401
 from . import uhcs as _uhcs  # noqa: E402,F401
 from .base import BaseAdapter  # noqa: E402,F401

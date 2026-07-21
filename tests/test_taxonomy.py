@@ -72,6 +72,14 @@ def test_grade_and_condition_axes_are_registered() -> None:
     exact = tax.node("condition/austenitize/water_quench/t970c_24h")
     assert exact.axis == CONDITION_AXIS
     assert exact.level == 4
+    assert tax.node("grade/ferrous/guan_2026_low_alloy_hs").axis == GRADE_AXIS
+    assert tax.node("grade/ferrous/gb_35crmo").axis == GRADE_AXIS
+    direct_quench = tax.node("condition/hot_roll_direct_quench/t900c_to_lt150c")
+    assert direct_quench.axis == CONDITION_AXIS
+    oil_quench = tax.node(
+        "condition/homogenize_austenitize/oil_quench/t1050c_20h_t860c_2h"
+    )
+    assert oil_quench.axis == CONDITION_AXIS
 
 
 def test_axes_do_not_leak_into_families() -> None:

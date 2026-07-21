@@ -89,6 +89,10 @@ grade:
           name: AISI 1080
         aisi_4140:
           name: AISI 4140
+        guan_2026_low_alloy_hs:
+          name: Guan et al. (2026) low-alloy high-strength steel
+        gb_35crmo:
+          name: GB 35CrMo
     aluminum:
       name: Aluminum grades
       children:
@@ -168,3 +172,20 @@ condition:
           name: Quenched, medium not recorded
     quench_temper:
       name: Quenched and tempered
+    hot_roll_direct_quench:
+      name: Hot rolled and online direct quenched
+      children:
+        t900c_to_lt150c:
+          name: Direct quenched from 900 C to below 150 C by water spray
+        t900c_to_lt150c_temper_t530c_90m_wq:
+          name: Direct quenched from 900 C to below 150 C, tempered 530 C for 90 min, water quenched
+        t900c_to_lt150c_temper_t580c_90m_wq:
+          name: Direct quenched from 900 C to below 150 C, tempered 580 C for 90 min, water quenched
+    homogenize_austenitize:
+      name: Homogenized and austenitized
+      children:
+        oil_quench:
+          name: Oil quenched
+          children:
+            t1050c_20h_t860c_2h:
+              name: Homogenized 1050 C for 20 h, austenitized 860 C for 2 h, oil quenched

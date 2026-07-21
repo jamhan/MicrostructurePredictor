@@ -2,6 +2,8 @@
 data/*
 !data/hardness_labels.csv
 !data/property_lookup.csv
+!data/literature_steel/
+!data/literature_steel/**
 
 # secrets: .env holds API tokens and must never reach this public repo
 .env

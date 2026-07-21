@@ -159,8 +159,16 @@ PhD thesis (CMU, doi:10.1184/R1/6716156.v1), which report Rockwell C for the
 Table 1. Each row's `source_note` records the table, the original HRC value
 with its uncertainty, and any assumption made in matching thesis conditions to
 UHCSDB sample labels. Rows marked ASSUMED await verification. The thesis has no
-hardness data for the other hold times, so growing past n=7 requires another
-source or new measurements.
+hardness data for the other hold times, so the UHCS measured benchmark remains
+at n=7.
+
+`data/literature_steel/manifest.csv` adds a separate cited weak-label set: 19
+SEM panels in ten independent groups from Guan et al. (2026) and Ren et al.
+(2023). Each image is matched to a hardness value from the same study and
+material state. These are marked `distant`, not measured, because the papers
+do not prove that an image is the exact hardness-tested coupon or indent
+neighbourhood. Panel-level source, license, match logic, test load, value
+locator and image hash are retained.
 
 [docs/DATASET_PLAN.md](docs/DATASET_PLAN.md) is the plan for growing them by
 distant supervision: attaching published hardness values to micrographs by
@@ -168,8 +176,9 @@ joining on (alloy grade, processing condition). It covers the join key, the
 `data/property_lookup.csv` schema and the citation protocol for filling it, the
 held-out-condition benchmark that tests whether a model learned physics or just
 grade recognition, and why the same technique must not be used for
-defect-controlled properties like fatigue. The table ships empty; no property
-value in this repo is uncited.
+defect-controlled properties like fatigue. The generic lookup table ships
+empty; the literature values live in the more specific panel manifest. No
+property value in this repo is uncited.
 
 ## Data and citations
 
@@ -185,6 +194,16 @@ If you use this data, cite:
 - DeCost, Lei, Francis, Holm, "High throughput quantitative metallography for
   complex microstructures using deep learning," *Microscopy and Microanalysis*
   25 (2019).
+- Guan et al., "Effect of Tempering on Microstructure, Strength and Toughness
+  Gradient in Quenched Low-Alloy Medium-Thickness Steel Plate," *Metals* 16,
+  243 (2026), <https://doi.org/10.3390/met16030243>. Figure 3 panels are
+  redistributed under CC BY 4.0; extraction and match details are in
+  `data/literature_steel/guan_2026_metals_16_243/SOURCE.md`.
+- Ren et al., "Effect of Tempering Temperature on Microstructure and Mechanical
+  Properties of 35CrMo Steel," *Metals* 13, 771 (2023),
+  <https://doi.org/10.3390/met13040771>. The Figure 2b crop is redistributed
+  under CC BY 4.0; extraction and match details are in
+  `data/literature_steel/ren_2023_metals_13_771/SOURCE.md`.
 - Stuckner, Harder, Smith, "Microstructure segmentation with deep learning
   encoders pre-trained on a large microscopy dataset," *npj Computational
   Materials* 8, 200 (2022). MicroNet weights:

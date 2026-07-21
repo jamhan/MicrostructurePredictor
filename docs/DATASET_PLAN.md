@@ -26,10 +26,11 @@ single feature in the image. That is exactly the class of property distant
 supervision is valid for, and the reason this document keeps saying hardness
 and not something else. See "Where this is invalid" below.
 
-The prize: 961 UHCS micrographs of which 564 already carry a complete join key
-(36 of 47 samples), against the 7 samples that carry a measured value today.
-Beyond UHCS, any published micrograph whose caption names a grade and a
-treatment becomes trainable data.
+The exact-key audit leaves 215 of 961 UHCS micrographs across 14 split groups
+with a complete, defensible key. Seven UHCS groups carry measured hardness.
+The first literature extraction adds 19 SEM panels across ten independent
+weak-label groups. Published micrographs can grow this set, but only when the
+caption, methods, and property table identify the same material state.
 
 ## The join key
 
@@ -191,6 +192,56 @@ migrated into this table. They are per-sample measurements keyed by sample
 label, tagged `measured`, and they are the only values in the project a
 benchmark may be scored against.
 
+## Panel-level literature matches
+
+The grade/condition lookup is the right representation for a handbook value,
+but not for every paper. A source can report several hardnesses for one
+treatment at different sampling locations. Flattening those cells into one
+lookup row would discard a real variable, while adding several rows would
+violate the lookup's unique-key contract.
+
+`data/literature_steel/manifest.csv` handles this case. It has one row per
+published panel and records:
+
+- the citation, DOI, article and PDF URLs, license, PDF page, figure and panel;
+- the property table page and exact row/column locator;
+- the controlled grade and condition ids, sampling location and specimen id;
+- the match relation and confidence, plus whether the exact physical specimen
+  is confirmed;
+- the value, unit, Vickers load and dwell, reported scatter and measurement
+  count;
+- the redistributed image path and SHA-256 hash.
+
+The literature adapter attaches the property directly from this manifest. It
+does not insert the value into `property_lookup.csv`. Panel pairs at two
+magnifications share a specimen id and therefore one split group.
+
+The first source is Guan et al. (2026), DOI 10.3390/met16030243. Figure 3 has
+18 SEM panels for three heat treatments and three through-thickness locations;
+Table 3 reports one HV1 mean for each of the nine treatment/location cells.
+The full mapping, processing route, composition, test method and CC BY
+attribution are in
+`data/literature_steel/guan_2026_metals_16_243/SOURCE.md`.
+
+The second source is Ren et al. (2023), DOI 10.3390/met13040771. Figure 2b is
+one SEM panel of 35CrMo after a documented homogenize, austenitize and oil
+quench route. Section 3.1 reports 532.1 plus or minus 7.2 HV for that state at
+0.5 kgf and 10 s. The source does not define the plus-or-minus statistic or a
+hardness measurement count, so the manifest records both limitations. The
+crop, chemistry, route and match are documented in
+`data/literature_steel/ren_2023_metals_13_771/SOURCE.md`.
+
+This match has high metadata confidence: the figure caption and table use the
+same condition and location names, and all specimens came from the same plate.
+It is still tagged `distant`. The paper does not establish that a panel shows
+the exact coupon or indent neighbourhood used for hardness. High match
+confidence and a direct physical measurement are different claims.
+
+The source panels contain letters, scale bars and phase annotations. They are
+kept unchanged as provenance copies. A raw-image model must mechanically mask
+or crop those markings before training, or it may learn figure layout instead
+of microstructure.
+
 ## String normalization
 
 Source metadata is written by people: "normalised low carbon steel", "0.45C
@@ -222,14 +273,11 @@ metadata fields that resolve to conflicting ids raise the same error.
 `check_aliases(taxonomy)` asserts every alias target is a registered node on
 the right axis, which catches an alias left pointing at a renamed node.
 
-Applied to the real UHCSDB metadata, 36 of 47 samples and 564 of 961
-micrographs come out with a complete key. The 11 samples that do not are the
-unlabelled odds and ends ("ET Gyro", "Midrex DRI") and the multi-step
-treatments the condition vocabulary does not yet cover.
-
-That is only coarse normalization coverage. The Phase 1 audit in
-`docs/UHCS_JOIN_KEY_AUDIT.md` checks temperature, hold time, multi-step labels,
-and unlinked images before treating any of those records as property-joinable.
+Applied coarsely to the real UHCSDB metadata, normalization recognizes 36 of
+47 samples and 564 of 961 micrographs. That is not the property-join count.
+The stricter audit in `docs/UHCS_JOIN_KEY_AUDIT.md` checks temperature, hold
+time, cooling route, multi-step labels and unlinked images. Only 14 groups and
+215 micrographs currently pass that exact-key audit.
 
 ## The held-out-condition split
 
@@ -272,7 +320,9 @@ Implementation is a generalisation of `records.split_records_by_group`: the
 same deterministic assignment, but taking a key function and an explicit
 held-out set instead of a random permutation over group ids. Within the train
 portion, grouping by sample still applies, so the no-leakage guarantee survives
-in both modes.
+in both modes. Literature panel pairs use the manifest specimen id as that
+group. Sampling location remains part of the specimen match even when the
+headline holdout is by condition.
 
 ### Choosing what to hold out
 
@@ -344,20 +394,26 @@ It degrades, rather than failing, with surface condition, specimen size, and
 indenter load. Those broaden the within-key scatter, which is what the
 `scatter` column is for.
 
-Hardness passes. It is a bulk average, it is measured by a standardised method,
-it is reported per grade and condition in every handbook, and its within-key
-scatter is small next to its across-key range. That is why it is first, and why
-`PROPERTY_UNITS` has exactly one entry.
+Hardness is the first defensible target. It is a bulk average and is measured by
+a standardised method. It still needs a key fine enough to capture variables
+that matter. The Guan plate varies by almost 40 HV through thickness within one
+treatment, so location cannot be thrown away for that source. Indenter load is
+also retained because HV1 and a different Vickers load are not assumed
+interchangeable. That caution is why `PROPERTY_UNITS` still has exactly one
+entry rather than opening the same machinery to defect-controlled properties.
 
-## What this phase does not do
+## Current boundary
 
-No dataset has been ingested and no property value has been added. The
-deliverable is vocabulary, schema, and the join, with tests. The lookup table
-is a header and a protocol.
+The generic lookup remains a header and protocol because no defensible
+external value has yet matched an existing UHCS grade/condition key. The Guan
+sources are instead a panel-level ingest: 19 images, ten weak-label groups and
+ten published hardness means. They expand the data without pretending those
+values belong to UHCS samples.
 
-The Phase 1 metadata audit and exact water-quench keys are complete. Hecht's
-thesis supplies hardness only for the 90-minute conditions already present in
-`data/hardness_labels.csv`, so the lookup remains empty. The next steps are to
-find an external source with exact grade/treatment matches or obtain new
-measurements, then implement the held-out-condition split and join-key-only
-baseline before training on distant labels.
+This extraction does not make the existing UHCS constituent segmenter valid on
+the new bainitic microstructures. The present hardness head consumes that
+segmenter's fractions and is scoped to the UHCS adapter, so it must not absorb
+these records silently. The next modeling step is a raw-image hardness baseline
+with annotation-safe crops, source-aware groups and held-out-condition
+evaluation. Until that exists, the new records are data ready, not a claim of a
+better calibrated model.

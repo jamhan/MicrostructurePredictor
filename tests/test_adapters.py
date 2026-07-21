@@ -15,9 +15,10 @@ def taxonomy() -> Taxonomy:
     return Taxonomy.load(None)
 
 
-def test_registry_lists_both_adapters() -> None:
+def test_registry_lists_adapters() -> None:
     assert "uhcs" in available_adapters()
     assert "micronet_al" in available_adapters()
+    assert "literature_steel" in available_adapters()
 
 
 def test_unknown_adapter_name(cfg, taxonomy) -> None:
