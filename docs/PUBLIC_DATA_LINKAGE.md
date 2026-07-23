@@ -113,6 +113,19 @@ The tracked queue is `data/public_sources.csv`.
 5. **Zenodo 8090777.** Thirty-seven LMD pieces with images, parameters,
    tensile, and hardness; high value but about 40 GB, so ingest selectively.
 
+### Metadata-only aerospace queue
+
+The following sources were scoped on 23 July 2026 and logged in
+`data/public_sources.csv`. They have **not** been downloaded:
+
+| source | material | useful content | limitation / intended role |
+|---|---|---|---|
+| Zenodo 10008435 | LPBF AlSi10Mg | 60 process states; raw high-magnification SEM; EBSD; XCT; tensile and HV | strongest next image-to-property candidate |
+| Zenodo 6587905 | LPBF Ti-6Al-4V | 42 process states; tensile, HV, porosity and prior-beta morphology | supplied micrographs are optical rather than SEM |
+| Zenodo 17037765 | Ti-6Al-4V + Cu | 51 light/SEM images; SEM-EDS; process and relative density | no advertised mechanical-property labels |
+| Zenodo 15124437 | SLM EN AW 7075 | SEM, EBSD/GROD and optical fields across process/preheat states | no advertised mechanical-property table |
+| Zenodo 17846617 | CMSX-6 | two explicit SEM TIFFs, overview micrographs and audited tensile data at 980 °C | very small reference set |
+
 Property-only tables can help regularise composition/process response, but
 they must not be pretended to have image labels. Simulated microstructures are
 a separate domain and must not enter the experimental validation split.
