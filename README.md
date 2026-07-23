@@ -133,6 +133,12 @@ permutation tests. Both are committed with outputs, so they read on GitHub
 without running anything; to run them live use
 `uv run --with jupyter jupyter lab`.
 
+For a presentation-ready tour of the complete local data landscape, open
+[notebooks/simon_data_landscape_demo.ipynb](notebooks/simon_data_landscape_demo.ipynb).
+It reads the verified Zenodo archives in place and shows the microscopy, EBSD,
+carbide measurements, linkage audit, replicated tensile curves, hardness, and
+316L grain-size evidence without extracting a second copy of the raw data.
+
 ## Design notes
 
 Every label in the system is a node id from `src/microhard/taxonomy.yaml`.
