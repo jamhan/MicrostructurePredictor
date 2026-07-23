@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import math
 from typing import ClassVar
 
 from ..config import Config
@@ -50,6 +51,7 @@ class BaseAdapter(ABC):
             if record.condition:
                 self.taxonomy.require([record.condition], axis=CONDITION_AXIS)
             self._check_property_sources(record)
+            self._check_property_weights(record)
         return out
 
     @staticmethod
@@ -65,4 +67,23 @@ class BaseAdapter(ABC):
             raise ValueError(
                 f"{record.record_id}: property source {unknown} not in "
                 f"{list(PROPERTY_SOURCES)}"
+            )
+
+    @staticmethod
+    def _check_property_weights(record: CanonicalRecord) -> None:
+        orphans = sorted(set(record.property_weights) - set(record.properties))
+        if orphans:
+            raise ValueError(
+                f"{record.record_id}: property_weights names {orphans}, which are "
+                "not in properties"
+            )
+        invalid = {
+            name: value
+            for name, value in record.property_weights.items()
+            if not math.isfinite(value) or not 0.0 < value <= 1.0
+        }
+        if invalid:
+            raise ValueError(
+                f"{record.record_id}: property weights must be finite in (0, 1], "
+                f"got {invalid}"
             )

@@ -29,6 +29,9 @@ def test_help_lists_commands() -> None:
         "train-clf",
         "extract-features",
         "fit-hardness",
+        "audit-public-links",
+        "validate-campaign",
+        "plan-measurements",
         "predict",
     ):
         assert command in result.output

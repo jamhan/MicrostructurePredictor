@@ -43,6 +43,8 @@ class CanonicalRecord:
       mask_class_nodes taxonomy node id for each integer mask class (index = class)
       properties       sample properties, e.g. {"hardness_hv": 310.0}
       property_sources per property name, MEASURED or DISTANT
+      property_weights training weight per property in (0, 1]; direct
+                       measurements normally use 1.0 and fuzzy links less
       alloy_grade      node id on the alloy_grade axis, e.g. "grade/ferrous/aisi_1045"
       condition        node id on the condition axis, e.g. "condition/austenitize/water_quench"
 
@@ -62,6 +64,7 @@ class CanonicalRecord:
     mask_class_nodes: tuple[str, ...] | None = None
     properties: dict[str, float] = field(default_factory=dict)
     property_sources: dict[str, str] = field(default_factory=dict)
+    property_weights: dict[str, float] = field(default_factory=dict)
     alloy_grade: str | None = None
     condition: str | None = None
 
@@ -75,6 +78,14 @@ class CanonicalRecord:
     def __post_init__(self) -> None:
         if not self.group_id:
             object.__setattr__(self, "group_id", self.record_id)
+
+    def property_weight(self, name: str) -> float:
+        """Training weight, with conservative defaults for older adapters."""
+
+        if name in self.property_weights:
+            return float(self.property_weights[name])
+        source = self.property_sources.get(name, MEASURED)
+        return 1.0 if source == MEASURED else 0.5
 
 
 def split_records_by_group(

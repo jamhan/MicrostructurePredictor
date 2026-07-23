@@ -1,7 +1,7 @@
 [project]
 name = "microhard"
 version = "0.1.0"
-description = "Predict steel hardness from SEM micrographs: segment microconstituents, then regress hardness from constituent fractions (UHCSDB)."
+description = "Link public metal micrographs, processing records, and mechanical properties for forward prediction and inverse design."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -27,6 +27,13 @@ topo = ["cripser>=0.0.15"]
 
 [dependency-groups]
 dev = ["pytest>=8.0"]
+notebook = [
+    "ipykernel>=6.29",
+    "jupyterlab>=4.4",
+    "matplotlib>=3.9",
+    "nbclient>=0.10",
+    "nbformat>=5.10",
+]
 
 [project.scripts]
 microhard = "microhard.cli:app"

@@ -111,6 +111,131 @@ def fit_hardness_cmd(config: Optional[Path] = _CONFIG_OPTION) -> None:
         typer.echo(f"[microhard] {HARDNESS_HINT}")
 
 
+@app.command("audit-public-links")
+def audit_public_links_cmd(
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Optional CSV path for every retained image/property candidate.",
+    ),
+    config: Optional[Path] = _CONFIG_OPTION,
+) -> None:
+    """Audit fuzzy image/property links in the public IN718 dataset."""
+    import pandas as pd
+
+    from .adapters.godec_in718 import GodecIN718Adapter, audit_godec_links
+    from .taxonomy import Taxonomy
+
+    cfg = _cfg(config)
+    records = GodecIN718Adapter(cfg, Taxonomy.load(cfg.taxonomy_path)).validated_records()
+    if not records:
+        typer.echo(
+            "No public IN718 images found. Run `python scripts/fetch_zenodo_in718.py`."
+        )
+        raise typer.Exit(1)
+
+    audit = audit_godec_links(cfg.public_in718_dir)
+    attached = audit[audit["auto_attach"]]
+    candidates = audit[~audit["auto_attach"]]
+    typer.echo(f"Public IN718 images:              {audit['record_id'].nunique()}")
+    typer.echo(f"Independent condition groups:    {len({r.group_id for r in records})}")
+    typer.echo(f"Auto-attached hardness labels:   {len(attached)}")
+    typer.echo(
+        "Orientation-sensitive candidates: "
+        f"{len(candidates[candidates['property_name'] != 'hardness_hv'])}"
+    )
+    typer.echo(
+        f"Validation-eligible links:        {int(audit['validation_eligible'].sum())}"
+    )
+
+    group_rows = []
+    for group_id in sorted({record.group_id for record in records}):
+        group = [record for record in records if record.group_id == group_id]
+        group_rows.append(
+            {
+                "group_id": group_id,
+                "images": len(group),
+                "hardness_hv": group[0].properties.get("hardness_hv"),
+            }
+        )
+    typer.echo("\nCondition-level hardness links:")
+    typer.echo(pd.DataFrame(group_rows).to_string(index=False))
+    typer.echo(
+        "\nTensile values were not auto-attached: H/V orientation is absent "
+        "from the image filenames."
+    )
+
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        audit.to_csv(output, index=False)
+        typer.echo(f"\nWrote {len(audit)} retained candidates to {output}")
+
+
+@app.command("validate-campaign")
+def validate_campaign_cmd(
+    root: Optional[Path] = typer.Option(
+        None,
+        "--root",
+        help="Campaign directory; defaults to data/experimental_campaign.",
+    ),
+    config: Optional[Path] = _CONFIG_OPTION,
+) -> None:
+    """Validate specimen, process, SEM, and mechanical-test linkage."""
+    from .experimental_campaign import load_campaign
+
+    cfg = _cfg(config)
+    tables = load_campaign(root or cfg.experimental_campaign_dir)
+    typer.echo("Campaign is valid:")
+    for name, count in tables.summary().items():
+        typer.echo(f"  {name.replace('_', ' '):<32s} {count}")
+
+
+@app.command("plan-measurements")
+def plan_measurements_cmd(
+    limit: int = typer.Option(12, "--limit", "-n", min=1),
+    grade: str = typer.Option(
+        "grade/ferrous/uhcs_ac1",
+        "--grade",
+        help="Alloy-grade taxonomy id to keep the first campaign composition-specific.",
+    ),
+    include_unverified: bool = typer.Option(
+        False,
+        "--include-unverified",
+        help="Also rank samples whose process route needs metadata verification.",
+    ),
+    output: Optional[Path] = typer.Option(
+        None, "--output", "-o", help="Optional CSV path for the complete plan."
+    ),
+    config: Optional[Path] = _CONFIG_OPTION,
+) -> None:
+    """Rank already-imaged UHCS specimens for direct property measurement."""
+    from .measurement_plan import plan_uhcs_measurements
+
+    plan = plan_uhcs_measurements(
+        _cfg(config),
+        limit=limit,
+        include_unverified=include_unverified,
+        grade=grade,
+    )
+    if plan.empty:
+        typer.echo("No unlabeled, imaged UHCS specimen groups are available.")
+        return
+    display_columns = [
+        "rank",
+        "sample_ids",
+        "sample_label",
+        "image_count",
+        "priority_score",
+        "rationale",
+    ]
+    typer.echo(plan[display_columns].to_string(index=False))
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        plan.to_csv(output, index=False)
+        typer.echo(f"\nWrote {len(plan)} ranked groups to {output}")
+
+
 @app.command()
 def predict(
     image: Path = typer.Argument(..., exists=True, dir_okay=False, readable=True),

@@ -1,0 +1,19 @@
+observation_id,build_strategy,state,temperature_c,hold_minutes,orientation,yield_strength_mpa,ultimate_tensile_strength_mpa,elongation_pct,reduction_area_pct,youngs_modulus_gpa,source_locator
+tensile-gauss-ab-h,Gauss,as-built,,,H,809,1114,23.6,36.4,173.5,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / GAUSS / As-print H
+tensile-gauss-ab-v,Gauss,as-built,,,V,636,989,28.9,52.9,142.8,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / GAUSS / As-print V
+tensile-gauss-954-h,Gauss,heat-treated,954,60,H,1269,1556,11.7,18.2,176.5,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / GAUSS / 954 C H
+tensile-gauss-954-v,Gauss,heat-treated,954,60,V,1169,1408,17.5,31.5,185.2,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / GAUSS / 954 C V
+tensile-gauss-984-h,Gauss,heat-treated,984,60,H,1325,1522,14.3,30,,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / GAUSS / 984 C H
+tensile-gauss-984-v,Gauss,heat-treated,984,60,V,1308,1487,14.6,30.3,,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / GAUSS / 984 C V
+tensile-gauss-1034-h,Gauss,heat-treated,1034,60,H,1341,1514,13.2,31.1,,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / GAUSS / 1034 C H
+tensile-gauss-1034-v,Gauss,heat-treated,1034,60,V,1370,1478,14.3,32.8,,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / GAUSS / 1034 C V
+tensile-gauss-1154-h,Gauss,heat-treated,1154,60,H,1171,1413,15.6,30.1,170.7,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / GAUSS / 1154 C H
+tensile-gauss-1154-v,Gauss,heat-treated,1154,60,V,865,1368,18,39.2,180,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / GAUSS / 1154 C V
+tensile-ring-954-h,Ring,heat-treated,954,60,H,1176,1450,15.4,20,,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / donut / 954 C H
+tensile-ring-954-v,Ring,heat-treated,954,60,V,1132,1405,8.4,10.8,,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / donut / 954 C V
+tensile-ring-984-h,Ring,heat-treated,984,60,H,1236,1449,14.5,27.1,182.3,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / donut / 984 C H
+tensile-ring-984-v,Ring,heat-treated,984,60,V,1210,1421,13.3,17,138.3,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / donut / 984 C V
+tensile-ring-1034-h,Ring,heat-treated,1034,60,H,1280,1405,14.6,33.8,177.7,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / donut / 1034 C H
+tensile-ring-1034-v,Ring,heat-treated,1034,60,V,1264,1376,8.7,16.1,134,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / donut / 1034 C V
+tensile-ring-1154-h,Ring,heat-treated,1154,60,H,1084,1341,19.7,30.5,,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / donut / 1154 C H
+tensile-ring-1154-v,Ring,heat-treated,1154,60,V,1112,1314,14.2,23.4,,Gauss-Ring heat treated mechanical tests.xlsx / Sheet1 / donut / 1154 C V

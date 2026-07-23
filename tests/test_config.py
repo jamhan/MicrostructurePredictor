@@ -9,7 +9,7 @@ def test_defaults() -> None:
     cfg = Config()
     assert cfg.encoder == "resnet50"
     assert cfg.image_size == 484
-    assert cfg.adapters == ["uhcs", "literature_steel"]
+    assert cfg.adapters == ["uhcs", "literature_steel", "godec_in718"]
     assert cfg.taxonomy_path is None  # bundled seed taxonomy
     assert cfg.sqlite_path == Path("data/microstructures.sqlite")
     assert cfg.seg_checkpoint == Path("checkpoints/segmenter.pt")
@@ -17,6 +17,7 @@ def test_defaults() -> None:
     assert cfg.router_checkpoint == Path("checkpoints/router.pt")
     assert cfg.heads_dir == Path("checkpoints/heads")
     assert cfg.literature_manifest_csv == Path("data/literature_steel/manifest.csv")
+    assert cfg.public_in718_dir == Path("data/public_in718_godec_2024")
 
 
 def test_toml_override(tmp_path: Path) -> None:

@@ -1,0 +1,1 @@
+measurement_id,specimen_id,test_coupon_id,property_name,value,unit,test_method,test_parameters_json,test_temperature_c,replicate_index,sampling_location,orientation,uncertainty,scatter_kind,raw_data_path,test_date,notes

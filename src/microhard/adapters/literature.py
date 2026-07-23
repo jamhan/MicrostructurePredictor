@@ -60,6 +60,7 @@ LITERATURE_COLUMNS = [
 ]
 
 MATCH_CONFIDENCE = ("low", "medium", "high")
+MATCH_WEIGHTS = {"low": 0.25, "medium": 0.55, "high": 0.85}
 MATCH_RELATIONS = (
     "same_study_batch_condition",
     "same_study_plate_condition_location",
@@ -248,6 +249,9 @@ class LiteratureSteelAdapter(BaseAdapter):
                 group_id=f"literature-{row['source_id']}-{row['specimen_id']}",
                 properties={row["property_name"]: float(row["property_value"])},
                 property_sources={row["property_name"]: row["property_source"]},
+                property_weights={
+                    row["property_name"]: MATCH_WEIGHTS[row["match_confidence"]]
+                },
                 alloy_grade=row["alloy_grade"],
                 condition=row["condition"],
             )

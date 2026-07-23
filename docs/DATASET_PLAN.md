@@ -109,10 +109,14 @@ live in `src/microhard/properties.py`.
 | `source_url` | DOI or URL where the value can be checked |
 | `note` | assumptions made in matching the source's wording to this key |
 
-`hardness_hv` (Vickers, HV) is the only registered property. Adding another
-means adding a line to `PROPERTY_UNITS`, which is deliberate: an unregistered
-property name is rejected at load, so nobody quietly starts a fatigue column in
-a table whose whole premise does not apply to fatigue.
+The registered bulk-property schema now covers Vickers hardness, yield
+strength, UTS, elongation, reduction of area, and Young's modulus. Hardness is
+still the only property with a fitted head. Adding anything else means adding a
+line to `PROPERTY_UNITS`, which is deliberate: an unregistered property name is
+rejected at load, so nobody quietly starts a fatigue column in a table whose
+whole premise does not apply to fatigue. Orientation-sensitive tensile
+properties also require orientation-compatible image metadata; see
+`docs/PUBLIC_DATA_LINKAGE.md`.
 
 Invalid rows are rejected at load rather than warned about. This includes an
 unregistered join-key node, an empty citation, a unit mismatch, a non-finite

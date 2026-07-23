@@ -1,0 +1,1 @@
+process_route_id,step_index,operation,start_temperature_c,end_temperature_c,duration_min,cooling_rate_c_per_s,atmosphere,strain,strain_rate_s_inv,equipment_id,measured_profile_path,notes

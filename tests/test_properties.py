@@ -203,6 +203,7 @@ def test_join_attaches_a_distant_label(index) -> None:
     (joined,) = join_properties([record(alloy_grade=GRADE, condition=CONDITION)], index)
     assert joined.properties == {"hardness_hv": 170.0}
     assert joined.property_sources == {"hardness_hv": DISTANT}
+    assert joined.property_weights == {"hardness_hv": 0.85}
 
 
 def test_join_needs_both_halves_of_the_key(index) -> None:
@@ -228,6 +229,7 @@ def test_measurement_beats_a_distant_label(index) -> None:
     (joined,) = join_properties([measured], index)
     assert joined.properties == {"hardness_hv": 310.0}
     assert joined.property_sources == {"hardness_hv": MEASURED}
+    assert joined.property_weight("hardness_hv") == 1.0
 
 
 def test_min_confidence_filters_weak_rows(index) -> None:

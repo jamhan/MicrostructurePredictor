@@ -41,6 +41,11 @@ def enabled_adapters(cfg: Config, taxonomy: Taxonomy) -> list:
 
 # Import concrete adapters so registration happens on package import.
 from . import folder as _folder  # noqa: E402,F401
+from . import godec_in718 as _godec_in718  # noqa: E402,F401
 from . import literature as _literature  # noqa: E402,F401
 from . import uhcs as _uhcs  # noqa: E402,F401
 from .base import BaseAdapter  # noqa: E402,F401
+
+# Imported after BaseAdapter is defined: experimental_campaign imports the
+# registry decorator and subclasses BaseAdapter.
+from .. import experimental_campaign as _experimental_campaign  # noqa: E402,F401

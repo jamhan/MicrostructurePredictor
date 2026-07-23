@@ -12,9 +12,11 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.base import clone
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_absolute_error, r2_score
-from sklearn.model_selection import LeaveOneOut, cross_val_predict
+from sklearn.model_selection import LeaveOneOut
+from sklearn.pipeline import Pipeline
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -43,18 +45,56 @@ class HardnessHead(PropertyHead):
             "gbrt": GradientBoostingRegressor(random_state=self.seed),
         }
 
-    def fit(self, X: pd.DataFrame, y: np.ndarray) -> dict[str, Any]:
+    @staticmethod
+    def _fit_model(
+        model: Any,
+        X: np.ndarray,
+        y: np.ndarray,
+        sample_weight: np.ndarray | None,
+    ) -> Any:
+        if sample_weight is None:
+            return model.fit(X, y)
+        if isinstance(model, Pipeline):
+            final_step = model.steps[-1][0]
+            return model.fit(X, y, **{f"{final_step}__sample_weight": sample_weight})
+        return model.fit(X, y, sample_weight=sample_weight)
+
+    def fit(
+        self,
+        X: pd.DataFrame,
+        y: np.ndarray,
+        sample_weight: np.ndarray | None = None,
+    ) -> dict[str, Any]:
         if len(X) < MIN_SAMPLES_FOR_CV:
             raise ValueError(
                 f"need >= {MIN_SAMPLES_FOR_CV} labeled samples for leave-one-out CV, got {len(X)}"
             )
         self.feature_names = list(X.columns)
         values = X.to_numpy(dtype=float)
+        if sample_weight is not None:
+            sample_weight = np.asarray(sample_weight, dtype=float)
+            if sample_weight.shape != y.shape:
+                raise ValueError("sample_weight must have the same shape as y")
+            if not np.isfinite(sample_weight).all() or (sample_weight <= 0).any():
+                raise ValueError("sample_weight values must be finite and positive")
 
-        results: dict[str, Any] = {"n_samples": len(y)}
+        results: dict[str, Any] = {
+            "n_samples": len(y),
+            "effective_sample_weight": float(
+                sample_weight.sum() if sample_weight is not None else len(y)
+            ),
+        }
         best_name, best_mae = "", float("inf")
         for name, model in self._candidates().items():
-            preds = cross_val_predict(model, values, y, cv=LeaveOneOut())
+            preds = np.empty_like(y, dtype=float)
+            for train, test in LeaveOneOut().split(values):
+                fitted = self._fit_model(
+                    clone(model),
+                    values[train],
+                    y[train],
+                    sample_weight[train] if sample_weight is not None else None,
+                )
+                preds[test] = fitted.predict(values[test])
             mae = float(mean_absolute_error(y, preds))
             r2 = float(r2_score(y, preds))
             results[name] = {"mae": mae, "r2": r2}
@@ -63,7 +103,9 @@ class HardnessHead(PropertyHead):
                 best_name, best_mae = name, mae
         results["best"] = best_name
 
-        self.model = self._candidates()[best_name].fit(values, y)
+        self.model = self._fit_model(
+            self._candidates()[best_name], values, y, sample_weight
+        )
         self.metrics = results
         return results
 

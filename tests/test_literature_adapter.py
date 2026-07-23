@@ -23,6 +23,7 @@ def test_tracked_literature_manifest_is_complete() -> None:
     assert all(record.image_path.is_file() for record in records)
     assert all(record.taxonomy_labels is None for record in records)
     assert all(record.property_sources == {"hardness_hv": DISTANT} for record in records)
+    assert all(record.property_weights == {"hardness_hv": 0.85} for record in records)
     assert {record.properties["hardness_hv"] for record in records} == {
         183.77,
         201.25,

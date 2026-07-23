@@ -1,0 +1,1 @@
+image_id,specimen_id,image_path,field_id,modality,scale_um_per_px,magnification,detector,accelerating_voltage_kv,working_distance_mm,preparation,etchant,sampling_location,orientation,acquisition_date,taxonomy_labels,sha256,notes

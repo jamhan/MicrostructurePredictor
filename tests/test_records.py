@@ -9,6 +9,7 @@ from microhard.records import (
     RecordSegmentationDataset,
     split_records_by_group,
 )
+from microhard.adapters.base import BaseAdapter
 from tests.conftest import write_image
 
 
@@ -31,6 +32,39 @@ def test_group_id_defaults_to_record_id(tmp_path: Path) -> None:
         record_id="x", image_path=tmp_path / "x.png", scale_um_per_px=None, modality="SEM"
     )
     assert record.group_id == "x"
+
+
+def test_property_weight_defaults_distinguish_direct_and_distant(tmp_path: Path) -> None:
+    direct = CanonicalRecord(
+        record_id="direct",
+        image_path=tmp_path / "direct.png",
+        scale_um_per_px=None,
+        modality="SEM",
+        properties={"hardness_hv": 300},
+    )
+    distant = CanonicalRecord(
+        record_id="distant",
+        image_path=tmp_path / "distant.png",
+        scale_um_per_px=None,
+        modality="SEM",
+        properties={"hardness_hv": 300},
+        property_sources={"hardness_hv": "distant"},
+    )
+    assert direct.property_weight("hardness_hv") == 1.0
+    assert distant.property_weight("hardness_hv") == 0.5
+
+
+def test_invalid_property_weight_is_rejected(tmp_path: Path) -> None:
+    record = CanonicalRecord(
+        record_id="bad",
+        image_path=tmp_path / "bad.png",
+        scale_um_per_px=None,
+        modality="SEM",
+        properties={"hardness_hv": 300},
+        property_weights={"hardness_hv": 1.5},
+    )
+    with pytest.raises(ValueError, match="finite in"):
+        BaseAdapter._check_property_weights(record)
 
 
 def test_split_by_group_no_leakage(tmp_path: Path) -> None:

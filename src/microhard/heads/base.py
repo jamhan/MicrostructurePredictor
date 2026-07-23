@@ -25,7 +25,12 @@ class PropertyHead(ABC):
     property_name: ClassVar[str]
 
     @abstractmethod
-    def fit(self, X: pd.DataFrame, y: np.ndarray) -> dict[str, Any]:
+    def fit(
+        self,
+        X: pd.DataFrame,
+        y: np.ndarray,
+        sample_weight: np.ndarray | None = None,
+    ) -> dict[str, Any]:
         """Fit on sample-level features; returns a metrics dict."""
 
     @abstractmethod

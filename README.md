@@ -1,8 +1,9 @@
 # microhard
 
-Predicts material properties from SEM micrographs. Proof of concept, currently
-trained on the UHCS dataset: 961 micrographs of a 2C-4Cr ultrahigh carbon steel
-under systematically varied heat treatments (DeCost, Francis & Holm 2017).
+Predicts material properties from SEM micrographs and structured process
+metadata. The project now grows primarily by provenance-aware matching of
+existing public image and mechanical datasets. Its proof-of-concept sources are
+UHCSDB, cited steel studies, and a public LPBF IN718 archive.
 
 The pipeline runs in three stages. A router assigns an incoming image to a
 material family, and answers "unknown" when it isn't sure. A U-Net segments the
@@ -51,6 +52,17 @@ images of the DeCost benchmark. Full fine-tuning in the original paper reaches
 roughly 0.7+, so head-only training leaves accuracy on the table in exchange
 for a shared backbone.
 
+Processing recovery: a linear probe on the frozen backbone recovers which of
+800 / 900 / 970 °C a sample was austenitized at, across 33 samples and 553
+micrographs, at 0.579 balanced accuracy pooled (chance 0.333). That pooled
+number is misleading in an informative way. A baseline seeing only magnification
+and detector — no pixels — already scores 0.515, and the result splits hard by
+magnification: 0.713 at 1964X (p ≤ 0.017 against 60 sample-level label
+permutations) against 0.36–0.44 at the other three common magnifications. The
+signal is real but scale-gated, which means averaging micrograph features across
+a 100x magnification range, as `aggregate_by_group` does today, destroys it.
+Worked through in [notebooks/temperature_probe.ipynb](notebooks/temperature_probe.ipynb).
+
 Hardness: leave-one-sample-out MAE of about 123 HV across 7 labeled samples
 spanning 410 to 876 HV (gradient boosting; a linear baseline diverges at this
 sample size). The error has a physical explanation: hardness in this steel is
@@ -70,6 +82,8 @@ uv sync                 # core dependencies
 uv sync --extra topo    # optional persistent-homology features (Cubical Ripser)
 bash download.sh        # fetch the UHCS data
 uv run microhard download   # verify what's on disk
+python scripts/fetch_zenodo_in718.py  # 22 BSE-SEM images + supplied workbooks
+uv run microhard audit-public-links  # inspect fuzzy image/property linkage
 ```
 
 The canonical NIST host for the UHCS data has been down since at least July
@@ -90,6 +104,7 @@ uv run microhard train-clf          # constituent classifier head
 uv run microhard train-router       # family router + conformal calibration
 uv run microhard extract-features   # segment everything -> data/features.csv
 uv run microhard fit-hardness       # leave-one-out CV over labeled samples
+uv run microhard audit-public-links # audit public IN718 image/property matches
 uv run microhard predict path/to/image.tif
 uv run microhard predict path/to/image.tif --family ferrous   # skip the router
 ```
@@ -99,7 +114,7 @@ overrides:
 
 ```toml
 # myrun.toml
-adapters = ["uhcs", "micronet_al"]
+adapters = ["uhcs", "literature_steel", "godec_in718"]
 encoder_weights = "imagenet"        # micronet | imagenet | none
 batch_size = 4
 device = "cpu"                      # auto | cpu | cuda | mps
@@ -108,9 +123,15 @@ router_alpha = 0.1
 
 There is a worked walkthrough of the network itself, from raw pixels to the
 hardness fit, in
-[notebooks/how_the_net_works.ipynb](notebooks/how_the_net_works.ipynb). It is
-committed with outputs, so it reads on GitHub without running anything; to run
-it live use `uv run --with jupyter jupyter lab`.
+[notebooks/how_the_net_works.ipynb](notebooks/how_the_net_works.ipynb).
+[notebooks/temperature_probe.ipynb](notebooks/temperature_probe.ipynb) is the
+second one: it asks whether a micrograph encodes the temperature its sample was
+held at, and doubles as an introduction to the machine learning that decides
+whether a small-data materials result is real — transfer learning, linear
+probing, leakage and grouped cross-validation, confound baselines and
+permutation tests. Both are committed with outputs, so they read on GitHub
+without running anything; to run them live use
+`uv run --with jupyter jupyter lab`.
 
 ## Design notes
 
@@ -141,6 +162,11 @@ cheap to retrain, easy to inspect, and portable across imaging conditions.
 
 ## Where this is going
 
+[docs/PUBLIC_DATA_LINKAGE.md](docs/PUBLIC_DATA_LINKAGE.md) is the current
+execution plan. It gives the present data count, the confidence-weighted fuzzy
+linkage rules, the ranked public-source queue, and the gates between a
+forward-model pilot and a defensible inverse-design result.
+
 [docs/ROADMAP.md](docs/ROADMAP.md) records the longer arc: the original aim
 (topological features of pore and grain structure to predict fatigue, and
 eventually generative inverse design of microstructure for a target property),
@@ -170,6 +196,14 @@ do not prove that an image is the exact hardness-tested coupon or indent
 neighbourhood. Panel-level source, license, match logic, test load, value
 locator and image hash are retained.
 
+`data/public_in718_godec_2024/` adds the first directly downloaded public
+paired archive: 22 BSE-SEM fields across ten IN718 process/condition groups,
+with HV1, tensile strength, yield strength, elongation, reduction of area and
+modulus in the supplied workbooks. The matcher auto-attaches the ten
+condition-level hardness means with weight 0.85. It does not auto-attach
+orientation-specific tensile values because the image filenames omit H/V
+orientation. Run `microhard audit-public-links` to inspect every candidate.
+
 [docs/DATASET_PLAN.md](docs/DATASET_PLAN.md) is the plan for growing them by
 distant supervision: attaching published hardness values to micrographs by
 joining on (alloy grade, processing condition). It covers the join key, the
@@ -179,6 +213,9 @@ grade recognition, and why the same technique must not be used for
 defect-controlled properties like fatigue. The generic lookup table ships
 empty; the literature values live in the more specific panel manifest. No
 property value in this repo is uncited.
+
+The earlier direct-measurement campaign schema remains available as an
+optional fallback, but it is not the current acquisition plan.
 
 ## Data and citations
 
@@ -204,6 +241,11 @@ If you use this data, cite:
   <https://doi.org/10.3390/met13040771>. The Figure 2b crop is redistributed
   under CC BY 4.0; extraction and match details are in
   `data/literature_steel/ren_2023_metals_13_771/SOURCE.md`.
+- Godec et al., dataset for "Influence of Laser Beam Shape and Post
+  Heat-Treatment on the Microstructure and Mechanical Properties of Additively
+  Manufactured Nickel-based Alloy IN718,"
+  <https://doi.org/10.5281/zenodo.14163786>. The local transcription and
+  linkage assumptions are in `data/public_in718_godec_2024/SOURCE.md`.
 - Stuckner, Harder, Smith, "Microstructure segmentation with deep learning
   encoders pre-trained on a large microscopy dataset," *npj Computational
   Materials* 8, 200 (2022). MicroNet weights:

@@ -4,6 +4,19 @@ data/*
 !data/property_lookup.csv
 !data/literature_steel/
 !data/literature_steel/**
+!data/experimental_campaign/
+!data/experimental_campaign/*.csv
+!data/public_sources.csv
+!data/public_in718_godec_2024/
+data/public_in718_godec_2024/raw/
+!data/public_in718_godec_2024/*.csv
+!data/public_in718_godec_2024/SOURCE.md
+!data/public_in718_carbides_2025/
+data/public_in718_carbides_2025/raw/
+!data/public_in718_carbides_2025/SOURCE.md
+!data/public_316l_composition_2026/
+data/public_316l_composition_2026/raw/
+!data/public_316l_composition_2026/SOURCE.md
 
 # secrets: .env holds API tokens and must never reach this public repo
 .env

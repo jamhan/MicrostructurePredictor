@@ -1,0 +1,11 @@
+observation_id,build_strategy,state,temperature_c,hold_minutes,hardness_hv,hardness_sd_hv,n_measurements,source_locator
+hardness-gauss-ab,Gauss,as-built,,,302.5,4.492957,3,Vickers hardness HV1.xlsx / Data / Gauss As built
+hardness-ring-ab,Ring,as-built,,,294.966667,3.597530,3,Vickers hardness HV1.xlsx / Data / Ring As built
+hardness-gauss-954,Gauss,heat-treated,954,60,487.066667,15.340868,3,Vickers hardness HV1.xlsx / Data / Gauss 954 C 1h
+hardness-ring-954,Ring,heat-treated,954,60,467.166667,6.694442,3,Vickers hardness HV1.xlsx / Data / Ring 954 C 1h
+hardness-gauss-984,Gauss,heat-treated,984,60,496.5,2.662079,3,Vickers hardness HV1.xlsx / Data / Gauss 984 C 1h
+hardness-ring-984,Ring,heat-treated,984,60,480.8,7.570117,3,Vickers hardness HV1.xlsx / Data / Ring 984 C 1h
+hardness-gauss-1034,Gauss,heat-treated,1034,60,500.633333,8.589270,3,Vickers hardness HV1.xlsx / Data / Gauss 1034 C 1h
+hardness-ring-1034,Ring,heat-treated,1034,60,501.133333,1.575507,3,Vickers hardness HV1.xlsx / Data / Ring 1034 C 1h
+hardness-gauss-1154,Gauss,heat-treated,1154,60,477.766667,2.451304,3,Vickers hardness HV1.xlsx / Data / Gauss 1154 C 1h
+hardness-ring-1154,Ring,heat-treated,1154,60,469.4,12.983066,3,Vickers hardness HV1.xlsx / Data / Ring 1154 C 1h

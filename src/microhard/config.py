@@ -37,7 +37,9 @@ class Config:
     taxonomy_path: Path | None = None  # None -> bundled src/microhard/taxonomy.yaml
 
     # --- datasets (adapter registry names, see adapters/) ---
-    adapters: list[str] = field(default_factory=lambda: ["uhcs", "literature_steel"])
+    adapters: list[str] = field(
+        default_factory=lambda: ["uhcs", "literature_steel", "godec_in718"]
+    )
 
     # --- model ---
     encoder: str = "resnet50"
@@ -94,6 +96,16 @@ class Config:
     def literature_manifest_csv(self) -> Path:
         """Panel-level literature provenance and property matches."""
         return self.data_dir / "literature_steel" / "manifest.csv"
+
+    @property
+    def public_in718_dir(self) -> Path:
+        """Curated metadata plus downloaded subset of Zenodo record 14163786."""
+        return self.data_dir / "public_in718_godec_2024"
+
+    @property
+    def experimental_campaign_dir(self) -> Path:
+        """Strict, specimen-linked process/SEM/mechanical campaign tables."""
+        return self.data_dir / "experimental_campaign"
 
     @property
     def features_csv(self) -> Path:

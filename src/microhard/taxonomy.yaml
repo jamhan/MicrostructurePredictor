@@ -55,6 +55,16 @@ aluminum:
     precipitate:
       name: Precipitates / second-phase particles
 
+nickel:
+  name: Nickel alloys
+  children:
+    matrix:
+      name: Nickel-alloy matrix
+    precipitate:
+      name: Strengthening precipitates
+    carbide:
+      name: Carbides
+
 # --- alloy_grade axis ------------------------------------------------------
 # Ids are grade/<family>/<grade>. Two kinds of node live here: standard
 # designations (AISI/AA numbers), which is what published property tables are
@@ -100,6 +110,11 @@ grade:
           name: AA 6061
         aa_7075:
           name: AA 7075
+    nickel:
+      name: Nickel-alloy grades
+      children:
+        in718:
+          name: IN718
 
 # --- condition axis --------------------------------------------------------
 # One node per physical processing route, not per phrase used to describe one.
@@ -113,6 +128,19 @@ condition:
   name: Processing conditions
   axis: condition
   children:
+    as_built:
+      name: As-built additive-manufacturing state
+    heat_treat:
+      name: Heat treated
+      children:
+        t954c_1h:
+          name: Heat treated at 954 C for 1 h
+        t984c_1h:
+          name: Heat treated at 984 C for 1 h
+        t1034c_1h:
+          name: Heat treated at 1034 C for 1 h
+        t1154c_1h:
+          name: Heat treated at 1154 C for 1 h
     as_cast:
       name: As-cast
     hot_rolled:

@@ -17,6 +17,7 @@ def test_bundled_seed_loads() -> None:
     families = {n.id for n in tax.families()}
     assert "ferrous" in families
     assert "aluminum" in families
+    assert "nickel" in families
     node = tax.node("ferrous/pearlite/lamellar")
     assert node.level == 3
     assert node.parent == "ferrous/pearlite"
@@ -85,7 +86,7 @@ def test_grade_and_condition_axes_are_registered() -> None:
 def test_axes_do_not_leak_into_families() -> None:
     """The router classifies over material families only, as it always did."""
     tax = Taxonomy.load(None)
-    assert {n.id for n in tax.families()} == {"ferrous", "aluminum"}
+    assert {n.id for n in tax.families()} == {"ferrous", "aluminum", "nickel"}
 
 
 def test_require_can_enforce_an_axis() -> None:

@@ -44,12 +44,20 @@ PROPERTY_LOOKUP_COLUMNS = [
 # Adding a property means adding a line here. The unit is part of the
 # property_name contract (hardness_hv is Vickers, full stop), so a row whose
 # unit disagrees is a transcription error rather than a conversion request.
-PROPERTY_UNITS = {"hardness_hv": "HV"}
+PROPERTY_UNITS = {
+    "hardness_hv": "HV",
+    "yield_strength_mpa": "MPa",
+    "ultimate_tensile_strength_mpa": "MPa",
+    "elongation_pct": "%",
+    "reduction_area_pct": "%",
+    "youngs_modulus_gpa": "GPa",
+}
 
 SCATTER_KINDS = ("sd", "half_range", "tolerance_band", "unreported")
 
 # Ordered weakest to strongest.
 CONFIDENCE_LEVELS = ("low", "medium", "high")
+CONFIDENCE_WEIGHTS = {"low": 0.25, "medium": 0.55, "high": 0.85}
 
 
 @dataclass(frozen=True)
@@ -278,6 +286,13 @@ def join_properties(
                 property_sources={
                     **record.property_sources,
                     **{name: DISTANT for name in additions},
+                },
+                property_weights={
+                    **record.property_weights,
+                    **{
+                        name: CONFIDENCE_WEIGHTS[entries[name].join_confidence]
+                        for name in additions
+                    },
                 },
             )
         )

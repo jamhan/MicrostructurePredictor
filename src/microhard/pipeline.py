@@ -130,6 +130,7 @@ def fit_property_head(cfg: Config, scope: str, property_name: str) -> dict[str, 
     frame = _filter_scope(frame, scope)
 
     values_by_group = _property_by_group(cfg, taxonomy, property_name)
+    weights_by_group = _property_weight_by_group(cfg, taxonomy, property_name)
     frame = frame[frame["group_id"].isin(values_by_group)]
     if frame.empty:
         print(
@@ -138,11 +139,12 @@ def fit_property_head(cfg: Config, scope: str, property_name: str) -> dict[str, 
         )
         return None
     y = frame["group_id"].map(values_by_group).to_numpy(dtype=float)
+    sample_weight = frame["group_id"].map(weights_by_group).to_numpy(dtype=float)
     X = frame[feature_names(frame)]
 
     head = head_cls()
     try:
-        metrics = head.fit(X, y)
+        metrics = head.fit(X, y, sample_weight=sample_weight)
     except ValueError as exc:
         print(f"[microhard] skipping fit: {exc}")
         return None
@@ -170,4 +172,21 @@ def _property_by_group(cfg: Config, taxonomy: Taxonomy, property_name: str) -> d
             value = record.properties.get(property_name)
             if value is not None and record.group_id not in out:
                 out[record.group_id] = float(value)
+    return out
+
+
+def _property_weight_by_group(
+    cfg: Config, taxonomy: Taxonomy, property_name: str
+) -> dict[str, float]:
+    """group_id -> confidence-derived training weight for its selected value."""
+
+    out: dict[str, float] = {}
+    lookup = lookup_index(load_property_lookup(cfg.property_lookup_csv, taxonomy))
+    for adapter in enabled_adapters(cfg, taxonomy):
+        records = join_properties(
+            adapter.validated_records(), lookup, min_confidence="medium"
+        )
+        for record in records:
+            if property_name in record.properties and record.group_id not in out:
+                out[record.group_id] = record.property_weight(property_name)
     return out

@@ -49,6 +49,13 @@ def test_hardness_head_fit_and_predict() -> None:
     assert head.predict(fv) == pytest.approx(300.0, abs=15)
 
 
+def test_hardness_head_accepts_confidence_weights() -> None:
+    X, y = _linear_frame()
+    weights = np.array([1.0, 1.0, 0.85, 0.85, 0.55, 0.55, 0.25, 0.25])
+    metrics = HardnessHead(seed=0).fit(X, y, sample_weight=weights)
+    assert metrics["effective_sample_weight"] == pytest.approx(weights.sum())
+
+
 def test_hardness_head_needs_min_samples() -> None:
     X, y = _linear_frame(2)
     with pytest.raises(ValueError, match="leave-one-out"):
